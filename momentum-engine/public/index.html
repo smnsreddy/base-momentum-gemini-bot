@@ -448,6 +448,8 @@
                     const whaleBadge = m.whaleInflow ? ' <span style="font-size:0.75rem;" title="Whale Netflow Detected">🐋</span>' : '';
                     const washBadge = m.washManipulated ? ' <span style="font-size:0.72rem; color:#f43f5e;" title="Suspicious Wash Trading Detected">⚠️ WASH_TRAP</span>' : '';
 
+                    const tradeBtn = `<button onclick="tradePair('${m.symbol}')" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.72rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#10b981';this.style.color='#fff'" onmouseout="this.style.background='rgba(16, 185, 129, 0.15)';this.style.color='#34d399'">⚡ TRADE</button>`;
+
                     return `
                         <tr>
                             <td><strong>${m.symbol}</strong>${whaleBadge}${washBadge}</td>
@@ -459,7 +461,10 @@
                             <td class="mono">${m.buyPressureRatio}% Buys</td>
                             <td><strong style="color: ${score >= 70 ? '#34d399' : '#38bdf8'};">${score}/100</strong></td>
                             <td>${regimeBadge}</td>
-                            <td><span style="font-size: 0.75rem; color: ${m.status === 'HIGH_PROBABILITY_SETUP' ? '#34d399' : 'var(--text-dim)'}; font-weight: 700;">${m.status}</span></td>
+                            <td style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 0.72rem; color: ${m.status === 'HIGH_PROBABILITY_SETUP' ? '#34d399' : 'var(--text-dim)'}; font-weight: 700;">${m.status}</span>
+                                ${tradeBtn}
+                            </td>
                         </tr>
                     `;
                 }).join('');
@@ -481,6 +486,23 @@
                         </div>
                     </div>
                 `).join('');
+            }
+        }
+
+        // Manual Select & Trade Pair Function
+        async function tradePair(symbol) {
+            if (!confirm(`Are you sure you want to manually enter ${symbol}?`)) return;
+
+            try {
+                const res = await fetch('/api/trade-pair', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol })
+                });
+                const data = await res.json();
+                alert(data.message);
+            } catch(e) {
+                alert("Trade entry error: " + e.message);
             }
         }
 

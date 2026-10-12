@@ -522,6 +522,7 @@ function closePosition(reasonType, message) {
     BOT_STATE.watchdogTelemetry.status = "IDLE";
 }
 
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/state', (req, res) => res.json(BOT_STATE));
 
@@ -545,6 +546,69 @@ app.post('/api/close-position', (req, res) => {
         realizedPnlUSDT: pos.pnlUSDT,
         message: exitMsg
     });
+});
+
+// Manual Select & Trade Pair Endpoint
+app.post('/api/trade-pair', (req, res) => {
+    const { symbol } = req.body;
+    if (!symbol) return res.json({ success: false, message: "No pair symbol provided." });
+
+    const targetPair = BOT_STATE.scannedTokens.find(p => p.symbol === symbol);
+    if (!targetPair) {
+        return res.json({ success: false, message: `Pair ${symbol} not found in live scanner.` });
+    }
+
+    // If an existing position is open, close it cleanly first
+    if (BOT_STATE.activePosition) {
+        closePosition("SWITCH_PAIR", `Switched to user-selected pair: ${symbol}`);
+    }
+
+    let takeProfitPct = 2.2;
+    let stopLossPct = 1.3;
+    if (targetPair.recommendedStrategy === "MEAN_REVERSION_SCALP") {
+        takeProfitPct = 1.4;
+        stopLossPct = 1.0;
+    } else if (targetPair.recommendedStrategy === "MOMENTUM_BREAKOUT") {
+        takeProfitPct = 3.2;
+        stopLossPct = 1.5;
+    }
+
+    const entryPrice = targetPair.currentPrice;
+    const stopLossPrice = entryPrice * (1 - (stopLossPct / 100));
+    const targetProfitPrice = entryPrice * (1 + (takeProfitPct / 100));
+
+    BOT_STATE.activePosition = {
+        id: `POS_${Date.now()}`,
+        strategy: targetPair.recommendedStrategy || "MANUAL_DISCRETIONARY",
+        symbol: targetPair.symbol,
+        token: targetPair.token,
+        dex: targetPair.dex,
+        entryPrice: entryPrice,
+        currentPrice: entryPrice,
+        highestPriceSeen: entryPrice,
+        sizeUSDT: BOT_STATE.riskEngine.tradeSizeUSDT,
+        stopLossPrice: stopLossPrice,
+        takeProfitPrice: targetProfitPrice,
+        targetTakeProfitPct: takeProfitPct,
+        targetStopLossPct: stopLossPct,
+        stepLadderLevel: 0,
+        entryTimestamp: Date.now(),
+        pnlPct: 0.0,
+        pnlUSDT: 0.0,
+        etaMinutes: 20.0,
+        reason: `Trader Manually Selected ${targetPair.symbol} on ${targetPair.dex} (Target: +${takeProfitPct}%, Stop: -${stopLossPct}%)`
+    };
+
+    BOT_STATE.recentSignals.unshift({
+        time: new Date().toLocaleTimeString(),
+        type: "MANUAL_PAIR_SELECT",
+        symbol: targetPair.symbol,
+        price: `$${entryPrice.toFixed(4)}`,
+        reason: BOT_STATE.activePosition.reason
+    });
+
+    broadcast('UPDATE', BOT_STATE);
+    return res.json({ success: true, message: `Successfully entered ${targetPair.symbol} at $${entryPrice.toFixed(4)}!` });
 });
 
 // Sweep Profit to Wallet Endpoint
