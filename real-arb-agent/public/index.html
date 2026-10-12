@@ -477,13 +477,15 @@
             <div class="kpi-val" id="walletFuelINR">₹1,500.00</div>
             <div class="kpi-sub">
                 <span style="color: #34d399;" id="walletFuelUSD">$17.85 USD</span>
-                <span style="color: var(--text-dim);">• ~4,687 trades runway</span>
-            </div>
+        <div class="kpi-card">
+            <div class="stat-lbl">On-Chain Withdrawable Balance</div>
+            <div class="kpi-val" style="color: #38bdf8;" id="contractWithdrawableINR">₹0.00</div>
+            <div class="kpi-sub" id="contractWithdrawableETH">0.0000 ETH in Contract (Ready to Sweep)</div>
         </div>
         <div class="kpi-card">
-            <div class="stat-lbl">Net Realized Profit</div>
+            <div class="stat-lbl">Live Arbitrage Profit Captured</div>
             <div class="kpi-val" style="color: #34d399;" id="netProfitINR">+₹0.00</div>
-            <div class="kpi-sub" id="netProfitUSD">+$0.00 USD (Self-Funded Sweeps: ₹0.00)</div>
+            <div class="kpi-sub" id="netProfitUSD">+$0.00 USD (Real-Time Live Market Edge)</div>
         </div>
         <div class="kpi-card">
             <div class="stat-lbl">Confirmed Mined Trades</div>
@@ -574,8 +576,16 @@
             // Update KPI Cards
             document.getElementById('walletFuelINR').innerText = `₹${state.budget.currentINR.toFixed(2)}`;
             document.getElementById('walletFuelUSD').innerText = `$${state.budget.currentUSD.toFixed(2)} USD`;
+            
+            const contractEth = state.contractBalanceETH || "0.0000";
+            const contractInr = (parseFloat(contractEth) * 2510 * 84).toFixed(2);
+            const elWithdrawableINR = document.getElementById('contractWithdrawableINR');
+            if (elWithdrawableINR) elWithdrawableINR.innerText = `₹${contractInr}`;
+            const elWithdrawableETH = document.getElementById('contractWithdrawableETH');
+            if (elWithdrawableETH) elWithdrawableETH.innerText = `${contractEth} ETH in Contract (Ready to Sweep)`;
+
             document.getElementById('netProfitINR').innerText = `+₹${state.netRealizedProfitINR.toFixed(2)}`;
-            document.getElementById('netProfitUSD').innerText = `+$${state.netRealizedProfitUSD.toFixed(2)} USD (Self-Funded Sweeps: +₹${state.budget.selfFundedReplenishedINR.toFixed(2)})`;
+            document.getElementById('netProfitUSD').innerText = `+$${state.netRealizedProfitUSD.toFixed(2)} USD (Real-Time Live Market Edge)`;
             document.getElementById('confirmedTradesCount').innerText = state.confirmedTrades;
             document.getElementById('scansRatio').innerText = `Scans: ${state.totalBlockScans} | Block #${state.currentBaseBlock}`;
 

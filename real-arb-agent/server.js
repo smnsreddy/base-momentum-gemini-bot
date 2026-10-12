@@ -422,9 +422,22 @@ async function evaluateExpandedMarket() {
     broadcast('TICK', getScannerSnapshot());
 }
 
+let cachedContractBalETH = "0.0000";
+async function syncContractBalance() {
+    try {
+        if (CONTRACT_ADDRESS && baseProvider) {
+            const b = await baseProvider.getBalance(CONTRACT_ADDRESS);
+            cachedContractBalETH = ethers.formatEther(b);
+        }
+    } catch(e) {}
+}
+setInterval(syncContractBalance, 10000);
+syncContractBalance();
+
 function getScannerSnapshot() {
     return {
         ...SCANNER_STATE,
+        contractBalanceETH: cachedContractBalETH,
         uptimeSeconds: Math.floor((Date.now() - SCANNER_STATE.startedAt) / 1000)
     };
 }
