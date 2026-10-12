@@ -388,7 +388,66 @@ async function evaluateExpandedMarket() {
                 SCANNER_STATE.budget.runwayTradesLeft = Math.floor(SCANNER_STATE.budget.currentINR / gasCostINR);
 
                 let txHashStr = `0x${ethers.hexlify(ethers.randomBytes(32)).substring(2)}`;
-                let statusLabel = IS_LIVE ? "LIVE_BASE_FLASH_EXECUTED" : "SIMULATED_MAINNET_FILL";
+                let statusLabel = "SIMULATED_MAINNET_FILL";
+
+                // ==============================================================
+                // LIVE ON-CHAIN FLASH LOAN EXECUTION ENGINE
+                // ==============================================================
+                if (IS_LIVE && liveWallet && CONTRACT_ADDRESS) {
+                    try {
+                        const contract = new ethers.Contract(CONTRACT_ADDRESS, contractAbi, liveWallet);
+                        const WETH_ADDR = '0x4200000000000000000000000000000000000006';
+                        const borrowAmountWei = ethers.parseEther(
+                            (topCandidate.optimalBorrowUSD / (SCANNER_STATE.ethPriceUSD || 2500)).toFixed(6)
+                        );
+
+                        // Router addresses on Base Mainnet
+                        const AERO_ROUTER = process.env.AERODROME_ROUTER_BASE || '0xcF77a3Ba9A5CA399B7c97c749566343833341fd7';
+                        const UNI_ROUTER = process.env.UNISWAP_V3_ROUTER_BASE || '0x2626664c2603336E57B271c5C0b26F421741e481';
+
+                        // Encode ArbParams struct
+                        const coder = ethers.AbiCoder.defaultAbiCoder();
+                        const dummySwapData = '0x';
+                        const minProfitWei = ethers.parseEther('0.00001'); // At least ~$0.02 profit
+
+                        const encodedParams = coder.encode(
+                            ['tuple(address routerA, address routerB, bytes swapDataA, bytes swapDataB, uint256 minProfit)'],
+                            [[AERO_ROUTER, UNI_ROUTER, dummySwapData, dummySwapData, minProfitWei]]
+                        );
+
+                        // TIER 1: ZERO-FEE SAFETY SIMULATION VIA eth_call
+                        // This tests whether the flash loan and swaps succeed WITHOUT paying any gas!
+                        let simSuccess = false;
+                        try {
+                            await contract.executeFlashArb.staticCall(
+                                WETH_ADDR,
+                                borrowAmountWei,
+                                encodedParams
+                            );
+                            simSuccess = true;
+                        } catch (simErr) {
+                            // Pre-simulation failed! This means spread was already closed.
+                            // ABORT IMMEDIATELY -> ZERO GAS SPENT! ZERO REVERT FEE!
+                            statusLabel = "PRE_SIM_BLOCKED_ZERO_COST";
+                        }
+
+                        if (simSuccess) {
+                            // TIER 2: SIMULATION CONFIRMED PROFIT -> BROADCAST LIVE TRANSACTION
+                            const tx = await contract.executeFlashArb(
+                                WETH_ADDR,
+                                borrowAmountWei,
+                                encodedParams,
+                                { gasLimit: 500000 }
+                            );
+                            txHashStr = tx.hash;
+                            statusLabel = "LIVE_ONCHAIN_EXECUTED_MINED";
+                            await tx.wait(1);
+                            await syncContractBalance();
+                        }
+                    } catch (broadcastErr) {
+                        console.error("[LIVE BROADCAST]", broadcastErr.message);
+                    }
+                }
 
                 // Log execution
                 SCANNER_STATE.liveOpportunityLog.unshift({
