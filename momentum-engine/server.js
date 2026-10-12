@@ -113,6 +113,8 @@ function broadcast(type, payload) {
 
 let cachedPairsMap = new Map();
 let seedQueryIndex = 0;
+// Post-trade cooldown map: prevents bot from immediately re-buying the same coin after exit
+const recentExitedPairsCooldown = new Map();
 
 /**
  * Omni-Market Broad Discovery Across Base Mainnet
@@ -272,15 +274,26 @@ function evaluateOmniEntry(marketList) {
     if (BOT_STATE.activePosition) return;
     if (BOT_STATE.riskEngine.todayLossUSDT >= BOT_STATE.riskEngine.dailyMaxLossLimitUSDT) return;
 
-    // Filter for viable setups with sufficient volume and no wash-trading traps
-    const viableSetups = marketList.filter(m => m.strategyScore >= 75 && m.volume1h >= 5000 && !m.washManipulated);
+    // Clean expired cooldowns (5 mins cooldown per exited pair)
+    const now = Date.now();
+    for (const [sym, expiry] of recentExitedPairsCooldown.entries()) {
+        if (now > expiry) recentExitedPairsCooldown.delete(sym);
+    }
+
+    // Filter for viable setups with sufficient volume, no wash-traps, and NOT in cooldown
+    const viableSetups = marketList.filter(m => 
+        m.strategyScore >= 75 && 
+        m.volume1h >= 5000 && 
+        !m.washManipulated &&
+        !recentExitedPairsCooldown.has(m.symbol)
+    );
     if (viableSetups.length === 0) {
         BOT_STATE.watchdogTelemetry = {
             status: "SEARCHING_OMNI_MARKET",
             predictiveConfidence: 90,
             reversalRiskPct: 0,
             actionRecommendation: "STAY_IN_SAFE_CASH",
-            lastAnalysisNote: `Scanned ${BOT_STATE.stats.totalScannedPairs} pairs. No setup cleared the 75/100 threshold with valid volume delta. 100% Capital Preserved.`
+            lastAnalysisNote: `Scanned ${BOT_STATE.stats.totalScannedPairs} pairs. Top viable setups currently in 5m cooldown or awaiting volume. 100% Capital Preserved.`
         };
         return;
     }
@@ -517,6 +530,9 @@ function closePosition(reasonType, message) {
         price: `$${pos.currentPrice.toFixed(4)}`,
         reason: message
     });
+
+    // Set 5-minute cooldown on this pair so the bot hunts the next best setup instead of re-buying the same coin
+    recentExitedPairsCooldown.set(pos.symbol, Date.now() + 5 * 60 * 1000);
 
     BOT_STATE.activePosition = null;
     BOT_STATE.watchdogTelemetry.status = "IDLE";
