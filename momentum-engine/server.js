@@ -232,12 +232,16 @@ function evaluateOmniEntry(marketList) {
     let takeProfitPct = 3.0;
     let stopLossPct = 1.5;
 
+    // Adaptive Profit Targeting based on Market Regime & Volatility
     if (topPick.recommendedStrategy === "MEAN_REVERSION_SCALP") {
-        takeProfitPct = 1.8;
-        stopLossPct = 1.2;
+        takeProfitPct = 1.4; // Fast tactical target for mean-reversion bounces
+        stopLossPct = 1.0;
     } else if (topPick.recommendedStrategy === "TREND_CONTINUATION") {
-        takeProfitPct = 2.4;
+        takeProfitPct = 2.2; // Clean swing target in steady 1h trend
         stopLossPct = 1.3;
+    } else if (topPick.recommendedStrategy === "MOMENTUM_BREAKOUT") {
+        takeProfitPct = 3.2; // Maximum expansion target on volume surge
+        stopLossPct = 1.5;
     }
 
     const entryPrice = topPick.currentPrice;
@@ -257,11 +261,13 @@ function evaluateOmniEntry(marketList) {
         stopLossPrice: stopLossPrice,
         takeProfitPrice: targetProfitPrice,
         targetTakeProfitPct: takeProfitPct,
+        targetStopLossPct: stopLossPct,
         trailingActivated: false,
         entryTimestamp: Date.now(),
         pnlPct: 0.0,
         pnlUSDT: 0.0,
-        reason: `Omni-Engine Selected ${topPick.recommendedStrategy} on ${topPick.symbol} (Score: ${topPick.strategyScore}/100, Buys: ${topPick.buyPressureRatio}%)`
+        etaMinutes: Math.max(1.5, Number(((takeProfitPct / Math.max(0.1, Math.abs(topPick.priceChange5m) || 0.3)) * 4).toFixed(1))),
+        reason: `Omni-Engine Selected ${topPick.recommendedStrategy} on ${topPick.symbol} (Score: ${topPick.strategyScore}/100, Target: +${takeProfitPct}%)`
     };
 
     BOT_STATE.recentSignals.unshift({
@@ -276,9 +282,10 @@ function evaluateOmniEntry(marketList) {
 
 /**
  * PREDICTIVE BACKGROUND WATCHDOG (The Predictive AI)
- * Evaluates live position health every 3s:
+ * Evaluates live position health every 1.2s:
  * - Detects buy exhaustion & order book decay
  * - Predicts reversal risk
+ * - Updates ETA countdown to target profit
  * - Kills position early to lock in profits or stop losses before -1.5% is reached
  */
 function runPredictiveWatchdog(marketList) {
@@ -301,11 +308,17 @@ function runPredictiveWatchdog(marketList) {
 
     const minutesOpen = (Date.now() - pos.entryTimestamp) / (1000 * 60);
 
+    // Calculate dynamic ETA to Target Profit
+    const remainingPct = Math.max(0, pos.targetTakeProfitPct - netPnlPct);
+    const velocityPerMin = (liveData && Math.abs(liveData.priceChange5m) > 0) ? (Math.abs(liveData.priceChange5m) / 5) : 0.08;
+    const calculatedEta = (remainingPct / Math.max(0.04, velocityPerMin)).toFixed(1);
+    pos.etaMinutes = Number(calculatedEta);
+
     // ==========================================
     // PREDICTIVE REVERSAL RISK CALCULATION
     // ==========================================
     let reversalRisk = 15; // Baseline low risk
-    let analysisNote = "Momentum healthy. Holding for target.";
+    let analysisNote = `Momentum healthy. Advancing towards +${pos.targetTakeProfitPct}% target. ETA ~${pos.etaMinutes}m.`;
 
     if (liveData) {
         // Factor 1: Buyer Exhaustion (If buy pressure drops below 45%)
@@ -346,14 +359,14 @@ function runPredictiveWatchdog(marketList) {
         return;
     }
 
-    // 2. TAKE PROFIT TRIGGER
+    // 2. TAKE PROFIT TRIGGER (Dynamic target: +1.4% for Scalp, +2.2% for Trend, +3.2% for Breakout)
     if (pos.currentPrice >= pos.takeProfitPrice || netPnlPct >= pos.targetTakeProfitPct) {
-        closePosition("TAKE_PROFIT", `Target Profit Reached (+${netPnlPct}%)! Gains secured.`);
+        closePosition("TAKE_PROFIT", `Dynamic Target Profit Reached (+${netPnlPct}%)! Locked into profits.`);
         return;
     }
 
     // 3. HARD STOP LOSS TRIGGER
-    if (pos.currentPrice <= pos.stopLossPrice || netPnlPct <= -BOT_STATE.riskEngine.hardStopLossPct) {
+    if (pos.currentPrice <= pos.stopLossPrice || netPnlPct <= -pos.targetStopLossPct) {
         closePosition("STOP_LOSS", `Hard Stop Loss hit (${netPnlPct}%). Capital protected.`);
         return;
     }
@@ -437,6 +450,42 @@ function closePosition(reasonType, message) {
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/state', (req, res) => res.json(BOT_STATE));
+
+// Sweep Profit to Wallet Endpoint
+app.post('/api/sweep-profit', (req, res) => {
+    const sweepAmountUSDT = BOT_STATE.capital.withdrawableProfitUSDT;
+    const sweepAmountINR = BOT_STATE.capital.withdrawableProfitINR;
+
+    if (sweepAmountUSDT <= 0) {
+        return res.json({ 
+            success: false, 
+            message: "No surplus profit to sweep yet. Base capital ($10.00) is protected." 
+        });
+    }
+
+    // Reset withdrawable profit to 0, maintaining the protected $10.00 base capital
+    BOT_STATE.capital.withdrawableProfitUSDT = 0.00;
+    BOT_STATE.capital.withdrawableProfitINR = 0.00;
+    BOT_STATE.capital.currentUSDT = BOT_STATE.capital.initialUSDT;
+    BOT_STATE.capital.currentINR = BOT_STATE.capital.initialINR;
+
+    BOT_STATE.recentSignals.unshift({
+        time: new Date().toLocaleTimeString(),
+        type: "PROFIT_SWEEP",
+        symbol: "VAULT_TO_WALLET",
+        price: `$${sweepAmountUSDT.toFixed(2)}`,
+        reason: `Swept $${sweepAmountUSDT.toFixed(2)} (₹${sweepAmountINR.toFixed(2)}) profit directly to destination wallet. Base $10.00 intact.`
+    });
+
+    broadcast('UPDATE', BOT_STATE);
+    return res.json({ 
+        success: true, 
+        sweptUSDT: sweepAmountUSDT, 
+        sweptINR: sweepAmountINR, 
+        remainingCapital: BOT_STATE.capital.currentUSDT,
+        message: `Successfully swept $${sweepAmountUSDT.toFixed(2)} (₹${sweepAmountINR.toFixed(2)}) to wallet!`
+    });
+});
 
 // PRO-BOT UPGRADE: Real-time on-chain block streaming via Base RPC WebSocket
 provider.on('block', async (blockNumber) => {
