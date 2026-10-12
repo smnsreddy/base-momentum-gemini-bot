@@ -388,9 +388,13 @@
                 tbody.innerHTML = state.scannedTokens.map(m => {
                     const v5Color = m.priceChange5m >= 0 ? '#34d399' : '#f43f5e';
                     const v1hColor = m.priceChange1h >= 0 ? '#34d399' : '#f43f5e';
-                    const regimeBadge = m.regime === 'BULLISH_BREAKOUT' 
-                        ? '<span class="badge badge-green">🚀 BREAKOUT</span>'
-                        : (m.regime === 'ACCUMULATION' ? '<span class="badge badge-blue">ACCUMULATING</span>' : '<span class="badge badge-yellow">CHOPPY</span>');
+                    const score = m.strategyScore !== undefined ? m.strategyScore : (m.momentumScore || 0);
+                    const strategyName = m.recommendedStrategy || m.regime || 'CHOPPY';
+                    
+                    let regimeBadge = `<span class="badge badge-yellow">${strategyName}</span>`;
+                    if (strategyName === 'MOMENTUM_BREAKOUT') regimeBadge = `<span class="badge badge-green">🚀 BREAKOUT</span>`;
+                    else if (strategyName === 'MEAN_REVERSION_SCALP') regimeBadge = `<span class="badge badge-blue">🎯 CHANNEL SCALP</span>`;
+                    else if (strategyName === 'TREND_CONTINUATION') regimeBadge = `<span class="badge badge-green">📈 TREND RIDE</span>`;
 
                     return `
                         <tr>
@@ -401,9 +405,9 @@
                             <td class="mono" style="color: ${v1hColor}; font-weight: 700;">${m.priceChange1h >= 0 ? '+' : ''}${m.priceChange1h}%</td>
                             <td class="mono">$${m.volume1h.toLocaleString()}</td>
                             <td class="mono">${m.buyPressureRatio}% Buys</td>
-                            <td><strong style="color: ${m.momentumScore >= 75 ? '#34d399' : '#38bdf8'};">${m.momentumScore}/100</strong></td>
+                            <td><strong style="color: ${score >= 70 ? '#34d399' : '#38bdf8'};">${score}/100</strong></td>
                             <td>${regimeBadge}</td>
-                            <td><span style="font-size: 0.75rem; color: ${m.status === 'READY_TO_BUY' ? '#34d399' : 'var(--text-dim)'}; font-weight: 700;">${m.status}</span></td>
+                            <td><span style="font-size: 0.75rem; color: ${m.status === 'HIGH_PROBABILITY_SETUP' ? '#34d399' : 'var(--text-dim)'}; font-weight: 700;">${m.status}</span></td>
                         </tr>
                     `;
                 }).join('');

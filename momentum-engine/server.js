@@ -142,30 +142,35 @@ async function scanOmniMarket() {
             const txnsSell1h = parseInt(p.txns?.h1?.sells || "0");
             const buyPressureRatio = (txnsBuy1h + txnsSell1h > 0) ? Math.round((txnsBuy1h / (txnsBuy1h + txnsSell1h)) * 100) : 50;
 
-            // Strategy Scoring & Classification
+            // Multi-Regime Strategy Scoring Engine
             let breakoutScore = 0;
-            if (priceChange5m > 0.6) breakoutScore += 35;
-            if (priceChange5m > 1.2) breakoutScore += 25;
-            if (priceChange1h > 1.0 && priceChange1h < 15.0) breakoutScore += 20;
-            if (buyPressureRatio >= 60) breakoutScore += 20;
+            if (priceChange5m > 0.4) breakoutScore += 30;
+            if (priceChange5m > 0.8) breakoutScore += 25;
+            if (priceChange1h > 0.5 && priceChange1h < 15.0) breakoutScore += 25;
+            if (buyPressureRatio >= 55) breakoutScore += 20;
 
             let meanReversionScore = 0;
-            if (Math.abs(priceChange1h) <= 2.0 && priceChange5m <= -0.4 && buyPressureRatio >= 40) {
-                meanReversionScore = 75 + Math.min(25, Math.abs(priceChange5m) * 20);
+            // Channel Floor: 1h range is quiet (-2.5% to +2.5%) and short term 5m dips slightly (-0.15% to -1.5%) with active liquidity
+            if (Math.abs(priceChange1h) <= 2.5 && priceChange5m <= -0.15 && buyPressureRatio >= 35) {
+                meanReversionScore = 65 + Math.min(30, Math.abs(priceChange5m) * 25) + (buyPressureRatio > 45 ? 10 : 0);
             }
 
-            let bestStrategy = "NONE";
-            let strategyScore = 0;
+            let trendPullbackScore = 0;
+            // Trend Continuation: 1h is in green (+0.5% to +10%) and 5m is consolidating cleanly
+            if (priceChange1h > 0.4 && priceChange5m >= -0.2 && buyPressureRatio >= 50) {
+                trendPullbackScore = 60 + Math.min(25, priceChange1h * 3) + (buyPressureRatio >= 60 ? 15 : 0);
+            }
 
-            if (breakoutScore >= 75) {
-                bestStrategy = "MOMENTUM_BREAKOUT";
-                strategyScore = breakoutScore;
-            } else if (meanReversionScore >= 75) {
+            let bestStrategy = "MOMENTUM_BREAKOUT";
+            let strategyScore = breakoutScore;
+
+            if (meanReversionScore > strategyScore) {
                 bestStrategy = "MEAN_REVERSION_SCALP";
                 strategyScore = meanReversionScore;
-            } else if (priceChange1h > 2.0 && priceChange5m > 0.1 && buyPressureRatio >= 55) {
+            }
+            if (trendPullbackScore > strategyScore) {
                 bestStrategy = "TREND_CONTINUATION";
-                strategyScore = 70;
+                strategyScore = trendPullbackScore;
             }
 
             marketDataList.push({
