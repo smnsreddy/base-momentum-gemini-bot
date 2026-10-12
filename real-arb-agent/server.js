@@ -59,7 +59,7 @@ const EXPANDED_WATCHLIST = [
         name: "Brett Base (Meme Bluechip)",
         address: "0x532f27101965dd16442E59d40670FaF5eBB142E4",
         feeHurdlePct: 0.35,
-        defaultBorrowUSD: 1200,
+        defaultBorrowUSD: 250,
         category: "Base Meme Bluechip",
         volatilityTier: "HIGH_BETA"
     },
@@ -68,7 +68,7 @@ const EXPANDED_WATCHLIST = [
         name: "Virtual Protocol (AI Agents)",
         address: "0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",
         feeHurdlePct: 0.30,
-        defaultBorrowUSD: 1500,
+        defaultBorrowUSD: 250,
         category: "AI Agent Ecosystem",
         volatilityTier: "HIGH_BETA"
     },
@@ -77,7 +77,7 @@ const EXPANDED_WATCHLIST = [
         name: "Toshi Base (Cat Meme)",
         address: "0xAC1Bd2486aAf3B5C0fc3Fd868558b082a531B2B4",
         feeHurdlePct: 0.35,
-        defaultBorrowUSD: 800,
+        defaultBorrowUSD: 200,
         category: "Retail Meme Volatility",
         volatilityTier: "ULTRA_HIGH_BETA"
     },
@@ -113,7 +113,7 @@ const EXPANDED_WATCHLIST = [
         name: "Degen (Base L2)",
         address: "0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",
         feeHurdlePct: 0.35,
-        defaultBorrowUSD: 1000,
+        defaultBorrowUSD: 250,
         category: "Community Token",
         volatilityTier: "HIGH_BETA"
     },
@@ -122,7 +122,7 @@ const EXPANDED_WATCHLIST = [
         name: "Mr Miggles Base",
         address: "0xB1a03E715470566e9775272304142a103c051a24",
         feeHurdlePct: 0.35,
-        defaultBorrowUSD: 850,
+        defaultBorrowUSD: 200,
         category: "Meme Retail Flow",
         volatilityTier: "ULTRA_HIGH_BETA"
     },
@@ -140,7 +140,7 @@ const EXPANDED_WATCHLIST = [
         name: "Moonwell DeFi",
         address: "0xA88594D404727625A94370c9845630B23664ae8b",
         feeHurdlePct: 0.30,
-        defaultBorrowUSD: 1200,
+        defaultBorrowUSD: 250,
         category: "Lending Governance",
         volatilityTier: "MEDIUM_BETA"
     }
