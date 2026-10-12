@@ -433,14 +433,23 @@ function closePosition(reasonType, message) {
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/state', (req, res) => res.json(BOT_STATE));
 
-// Run Omni-Scanner every 3.5 seconds
-setInterval(scanOmniMarket, 3500);
+// PRO-BOT UPGRADE: Real-time on-chain block streaming via Base RPC WebSocket
+provider.on('block', async (blockNumber) => {
+    BOT_STATE.currentBaseBlock = blockNumber;
+    // Immediate sub-second re-evaluation on every new Base block (every 2s on Base)
+    if (BOT_STATE.activePosition) {
+        runPredictiveWatchdog(BOT_STATE.scannedTokens);
+    }
+});
+
+// Run High-Frequency Market Scanner every 1.2 seconds (Pro Speed)
+setInterval(scanOmniMarket, 1200);
 scanOmniMarket();
 
 server.listen(PORT, () => {
     console.log(`=======================================================`);
-    console.log(`🧠 AUTONOMOUS OMNI-MARKET PREDICTIVE AI ENGINE ACTIVE`);
+    console.log(`⚡ PRO-GRADE HIGH-FREQUENCY BASE ENGINE ACTIVE`);
     console.log(`Live Dashboard: http://localhost:${PORT}`);
-    console.log(`Scanning 25+ Base Pairs Across All DEXs`);
+    console.log(`Scanning Frequency: 1.2s • Real-Time Block Event Stream Active`);
     console.log(`=======================================================`);
 });
