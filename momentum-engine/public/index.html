@@ -331,6 +331,22 @@
             document.getElementById('winRateVal').innerText = `${state.stats.winRatePct}%`;
             document.getElementById('winRateSub').innerText = `${state.stats.winningTrades}W - ${state.stats.losingTrades}L (${state.stats.totalTrades} Total Trades)`;
 
+            // Sweep Button State
+            const sweepBtn = document.getElementById('btnSweepProfit');
+            if (sweepBtn) {
+                if (state.capital.withdrawableProfitUSDT > 0) {
+                    sweepBtn.innerHTML = `<span>💰</span><span>SWEEP +$${state.capital.withdrawableProfitUSDT.toFixed(2)} TO WALLET</span>`;
+                    sweepBtn.style.background = 'linear-gradient(135deg, #059669 0%, #10b981 100%)';
+                    sweepBtn.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.5)';
+                    sweepBtn.style.cursor = 'pointer';
+                } else {
+                    sweepBtn.innerHTML = `<span>🔒</span><span>$10.00 BASE PROTECTED ($0 PROFIT)</span>`;
+                    sweepBtn.style.background = 'rgba(51, 65, 85, 0.8)';
+                    sweepBtn.style.boxShadow = 'none';
+                    sweepBtn.style.cursor = 'default';
+                }
+            }
+
             // Active Position Card
             const posBox = document.getElementById('positionContainer');
             if (state.activePosition) {

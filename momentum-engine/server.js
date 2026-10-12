@@ -31,11 +31,13 @@ const PORT = 3001;
 const BASE_RPC_URL = process.env.BASE_RPC_URL || "https://base-mainnet.g.alchemy.com/v2/alch_nx83io0BfVtid4acb1RUo";
 const provider = new ethers.JsonRpcProvider(BASE_RPC_URL);
 
-// Omni-Market Token Seed Universe (Expands dynamically)
+// Omni-Market Token Seed Universe (Expanded to 25+ liquid Base assets)
 const SEED_QUERIES = [
     'AERO', 'VIRTUAL', 'BRETT', 'DEGEN', 'TOSHI', 
     'MIGGLES', 'KEYCAT', 'HIGHER', 'WELL', 'SEAM', 
-    'cbETH', 'wstETH', 'cbBTC', 'LOWER', 'NORMIE'
+    'cbETH', 'wstETH', 'cbBTC', 'LOWER', 'NORMIE',
+    'MOXIE', 'BASED', 'SKI', 'BENJI', 'SPEC',
+    'BUILD', 'LUM', 'CHOMP', 'EURC', 'USDC'
 ];
 
 const BOT_STATE = {
@@ -142,6 +144,10 @@ async function scanOmniMarket() {
             const txnsSell1h = parseInt(p.txns?.h1?.sells || "0");
             const buyPressureRatio = (txnsBuy1h + txnsSell1h > 0) ? Math.round((txnsBuy1h / (txnsBuy1h + txnsSell1h)) * 100) : 50;
 
+            // Multi-Timeframe Alignment Check (1m/5m/1h confirmation to filter out bull traps)
+            const isMultiTimeframeAligned = (priceChange1h >= 0 && priceChange5m >= 0 && buyPressureRatio >= 52) ||
+                                            (Math.abs(priceChange1h) <= 2.5 && priceChange5m <= -0.15 && buyPressureRatio >= 38);
+
             // Multi-Regime Strategy Scoring Engine
             let breakoutScore = 0;
             if (priceChange5m > 0.4) breakoutScore += 30;
@@ -173,6 +179,11 @@ async function scanOmniMarket() {
                 strategyScore = trendPullbackScore;
             }
 
+            // Multi-Timeframe Penalty: If timeframes diverge on breakout, penalize to avoid bull trap
+            if (!isMultiTimeframeAligned && bestStrategy === "MOMENTUM_BREAKOUT") {
+                strategyScore = Math.max(0, strategyScore - 15);
+            }
+
             marketDataList.push({
                 pairAddress: p.pairAddress,
                 symbol: `${p.baseToken.symbol} / ${p.quoteToken.symbol}`,
@@ -192,7 +203,7 @@ async function scanOmniMarket() {
 
         // Sort by highest strategy score and liquidity
         marketDataList.sort((a, b) => b.strategyScore - a.strategyScore || b.volume1h - a.volume1h);
-        BOT_STATE.scannedTokens = marketDataList.slice(0, 15);
+        BOT_STATE.scannedTokens = marketDataList.slice(0, 20);
         BOT_STATE.stats.totalScannedPairs = marketDataList.length;
 
         // Position Management
