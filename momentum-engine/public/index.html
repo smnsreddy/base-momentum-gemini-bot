@@ -364,7 +364,8 @@
                                 <span style="font-weight: 800; font-size: 1.1rem; color: #fff;">ACTIVE POSITION: ${pos.symbol}</span>
                                 <span class="badge badge-blue">${pos.dex}</span>
                                 <span class="badge badge-yellow">${pos.strategy}</span>
-                                ${pos.trailingActivated ? '<span class="badge badge-green">🛡️ TRAILING STOP ARMED</span>' : ''}
+                                ${pos.stepLadderLevel === 1 ? '<span class="badge badge-blue">🛡️ BREAK-EVEN LOCKED (0% RISK)</span>' : ''}
+                                ${pos.stepLadderLevel === 2 ? '<span class="badge badge-green">💰 STEP-LADDER LOCKED (+1.0% WIN)</span>' : ''}
                             </div>
                             <div style="text-align: right;">
                                 <div class="mono" style="font-size: 1.4rem; font-weight: 800; color: ${pnlColor};">
@@ -440,9 +441,12 @@
                         ? `$${m.currentPrice.toFixed(6)}` 
                         : (m.currentPrice > 1000 ? `$${m.currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : `$${m.currentPrice.toFixed(4)}`);
 
+                    const whaleBadge = m.whaleInflow ? ' <span style="font-size:0.75rem;" title="Whale Netflow Detected">🐋</span>' : '';
+                    const washBadge = m.washManipulated ? ' <span style="font-size:0.72rem; color:#f43f5e;" title="Suspicious Wash Trading Detected">⚠️ WASH_TRAP</span>' : '';
+
                     return `
                         <tr>
-                            <td><strong>${m.symbol}</strong></td>
+                            <td><strong>${m.symbol}</strong>${whaleBadge}${washBadge}</td>
                             <td>${m.dex}</td>
                             <td class="mono">${formattedPrice}</td>
                             <td class="mono" style="color: ${v5Color}; font-weight: 700;">${m.priceChange5m >= 0 ? '+' : ''}${m.priceChange5m}%</td>

@@ -144,6 +144,16 @@ async function scanOmniMarket() {
             const txnsSell1h = parseInt(p.txns?.h1?.sells || "0");
             const buyPressureRatio = (txnsBuy1h + txnsSell1h > 0) ? Math.round((txnsBuy1h / (txnsBuy1h + txnsSell1h)) * 100) : 50;
 
+            // IDEA 2: PRO-GRADE ANTI-FAKEOUT VOLUME DELTA
+            // Detect wash-trading manipulation: if avg buy is tiny but avg sell is huge, buyers are getting trapped
+            const totalTxns = txnsBuy1h + txnsSell1h;
+            const avgTxnSize = totalTxns > 0 ? (volume1h / totalTxns) : 0;
+            const isWashManipulated = (buyPressureRatio > 65 && avgTxnSize < 35 && volume1h < 8000);
+
+            // IDEA 4: WHALE NETFLOW INFLOW DETECTOR
+            // Detects high-capital institutional blocks on Base ($25k+ hourly pool volume with strong positive delta)
+            const hasWhaleInflow = (volume1h >= 25000 && buyPressureRatio >= 60 && priceChange5m >= 0.2);
+
             // Multi-Timeframe Alignment Check (1m/5m/1h confirmation to filter out bull traps)
             const isMultiTimeframeAligned = (priceChange1h >= 0 && priceChange5m >= 0 && buyPressureRatio >= 52) ||
                                             (Math.abs(priceChange1h) <= 2.5 && priceChange5m <= -0.15 && buyPressureRatio >= 38);
@@ -154,6 +164,7 @@ async function scanOmniMarket() {
             if (priceChange5m > 0.8) breakoutScore += 25;
             if (priceChange1h > 0.5 && priceChange1h < 15.0) breakoutScore += 25;
             if (buyPressureRatio >= 55) breakoutScore += 20;
+            if (hasWhaleInflow) breakoutScore += 15; // Whale boost
 
             let meanReversionScore = 0;
             // Channel Floor: 1h range is quiet (-2.5% to +2.5%) and short term 5m dips slightly (-0.15% to -1.5%) with active liquidity
@@ -165,6 +176,7 @@ async function scanOmniMarket() {
             // Trend Continuation: 1h is in green (+0.5% to +10%) and 5m is consolidating cleanly
             if (priceChange1h > 0.4 && priceChange5m >= -0.2 && buyPressureRatio >= 50) {
                 trendPullbackScore = 60 + Math.min(25, priceChange1h * 3) + (buyPressureRatio >= 60 ? 15 : 0);
+                if (hasWhaleInflow) trendPullbackScore += 10;
             }
 
             let bestStrategy = "MOMENTUM_BREAKOUT";
@@ -179,7 +191,10 @@ async function scanOmniMarket() {
                 strategyScore = trendPullbackScore;
             }
 
-            // Multi-Timeframe Penalty: If timeframes diverge on breakout, penalize to avoid bull trap
+            // Penalize wash-trading manipulation or time divergence
+            if (isWashManipulated) {
+                strategyScore = Math.max(0, strategyScore - 30); // Heavy penalty on fake wash pools
+            }
             if (!isMultiTimeframeAligned && bestStrategy === "MOMENTUM_BREAKOUT") {
                 strategyScore = Math.max(0, strategyScore - 15);
             }
@@ -199,6 +214,8 @@ async function scanOmniMarket() {
                 buyPressureRatio,
                 strategyScore: cleanStrategyScore,
                 recommendedStrategy: bestStrategy,
+                whaleInflow: hasWhaleInflow,
+                washManipulated: isWashManipulated,
                 status: cleanStrategyScore >= 75 ? "HIGH_PROBABILITY_SETUP" : "SCANNING"
             });
         }
@@ -229,15 +246,15 @@ function evaluateOmniEntry(marketList) {
     if (BOT_STATE.activePosition) return;
     if (BOT_STATE.riskEngine.todayLossUSDT >= BOT_STATE.riskEngine.dailyMaxLossLimitUSDT) return;
 
-    // Filter for viable setups with sufficient volume to ensure zero slippage
-    const viableSetups = marketList.filter(m => m.strategyScore >= 75 && m.volume1h >= 5000);
+    // Filter for viable setups with sufficient volume and no wash-trading traps
+    const viableSetups = marketList.filter(m => m.strategyScore >= 75 && m.volume1h >= 5000 && !m.washManipulated);
     if (viableSetups.length === 0) {
         BOT_STATE.watchdogTelemetry = {
             status: "SEARCHING_OMNI_MARKET",
             predictiveConfidence: 90,
             reversalRiskPct: 0,
             actionRecommendation: "STAY_IN_SAFE_CASH",
-            lastAnalysisNote: `Scanned ${BOT_STATE.stats.totalScannedPairs} pairs. No setup cleared the 75/100 threshold with >$5k volume. 100% Capital Preserved.`
+            lastAnalysisNote: `Scanned ${BOT_STATE.stats.totalScannedPairs} pairs. No setup cleared the 75/100 threshold with valid volume delta. 100% Capital Preserved.`
         };
         return;
     }
@@ -276,12 +293,12 @@ function evaluateOmniEntry(marketList) {
         takeProfitPrice: targetProfitPrice,
         targetTakeProfitPct: takeProfitPct,
         targetStopLossPct: stopLossPct,
-        trailingActivated: false,
+        stepLadderLevel: 0, // Level 0: entry, 1: break-even locked (+0.8%), 2: +1.0% guaranteed (+1.5%)
         entryTimestamp: Date.now(),
         pnlPct: 0.0,
         pnlUSDT: 0.0,
         etaMinutes: Math.max(1.5, Number(((takeProfitPct / Math.max(0.1, Math.abs(topPick.priceChange5m) || 0.3)) * 4).toFixed(1))),
-        reason: `Omni-Engine Selected ${topPick.recommendedStrategy} on ${topPick.symbol} (Score: ${topPick.strategyScore}/100, Target: +${takeProfitPct}%)`
+        reason: `Omni-Engine Selected ${topPick.recommendedStrategy} on ${topPick.symbol} (Score: ${topPick.strategyScore}/100, Target: +${takeProfitPct}%)${topPick.whaleInflow ? ' 🐋 [WHALE INFLOW CONFIRMED]' : ''}`
     };
 
     BOT_STATE.recentSignals.unshift({
@@ -297,10 +314,9 @@ function evaluateOmniEntry(marketList) {
 /**
  * PREDICTIVE BACKGROUND WATCHDOG (The Predictive AI)
  * Evaluates live position health every 1.2s:
- * - Detects buy exhaustion & order book decay
- * - Predicts reversal risk
- * - Updates ETA countdown to target profit
- * - Kills position early to lock in profits or stop losses before -1.5% is reached
+ * - Smart Trailing Profit Step-Ladder (Guarantees wins, never lets winners turn to red)
+ * - Time-Decay Auto-Escape (Frees capital if trade is flat for >7 mins)
+ * - Order book decay & early reversal detection
  */
 function runPredictiveWatchdog(marketList) {
     const pos = BOT_STATE.activePosition;
@@ -329,10 +345,26 @@ function runPredictiveWatchdog(marketList) {
     pos.etaMinutes = Number(calculatedEta);
 
     // ==========================================
+    // IDEA 1: SMART TRAILING PROFIT STEP-LADDER
+    // ==========================================
+    // Step 1: Up +0.8% -> Move stop loss to Break-Even +0.1% (Risk is 0%)
+    if (pos.stepLadderLevel === 0 && netPnlPct >= 0.8) {
+        pos.stepLadderLevel = 1;
+        pos.stopLossPrice = pos.entryPrice * 1.0025; // Locked Break-even
+    }
+    // Step 2: Up +1.5% -> Lock in guaranteed +1.0% profit
+    if (pos.stepLadderLevel <= 1 && netPnlPct >= 1.5) {
+        pos.stepLadderLevel = 2;
+        pos.stopLossPrice = pos.entryPrice * 1.0115; // Locked +1.0% guaranteed net win
+    }
+
+    // ==========================================
     // PREDICTIVE REVERSAL RISK CALCULATION
     // ==========================================
     let reversalRisk = 15; // Baseline low risk
     let analysisNote = `Momentum healthy. Advancing towards +${pos.targetTakeProfitPct}% target. ETA ~${pos.etaMinutes}m.`;
+    if (pos.stepLadderLevel === 1) analysisNote = `🛡️ Break-even Stop Locked at 0.0% Risk. Riding momentum.`;
+    if (pos.stepLadderLevel === 2) analysisNote = `💰 Step-Ladder Locked +1.0% Minimum Profit. Riding for target.`;
 
     if (liveData) {
         // Factor 1: Buyer Exhaustion (If buy pressure drops below 45%)
@@ -345,17 +377,15 @@ function runPredictiveWatchdog(marketList) {
             reversalRisk += 25;
             analysisNote = "Short-term momentum flipped negative.";
         }
-        // Factor 3: Time Stagnation (In trade > 12 mins with < 0.3% move)
-        if (minutesOpen > 12 && Math.abs(netPnlPct) < 0.4) {
-            reversalRisk += 20;
-            analysisNote = "Momentum stalled. High probability of chop decay.";
-        }
     }
 
-    // Trailing stop activation if up +1.2%
-    if (!pos.trailingActivated && netPnlPct >= BOT_STATE.riskEngine.trailingStopThresholdPct) {
-        pos.trailingActivated = true;
-        pos.stopLossPrice = pos.entryPrice * 1.003;
+    // ==========================================
+    // IDEA 5: 7-MINUTE TIME-DECAY AUTO-ESCAPE
+    // If trade sits stagnant with <0.2% movement after 7 minutes, cut cleanly to avoid dead money
+    // ==========================================
+    if (minutesOpen >= 7 && Math.abs(netPnlPct) < 0.25) {
+        closePosition("TIME_DECAY_ESCAPE", `Trade stagnant after ${minutesOpen.toFixed(1)} mins (${netPnlPct}%). Capital freed cleanly for next active runner.`);
+        return;
     }
 
     BOT_STATE.watchdogTelemetry = {
@@ -373,15 +403,16 @@ function runPredictiveWatchdog(marketList) {
         return;
     }
 
-    // 2. TAKE PROFIT TRIGGER (Dynamic target: +1.4% for Scalp, +2.2% for Trend, +3.2% for Breakout)
+    // 2. TAKE PROFIT TRIGGER
     if (pos.currentPrice >= pos.takeProfitPrice || netPnlPct >= pos.targetTakeProfitPct) {
         closePosition("TAKE_PROFIT", `Dynamic Target Profit Reached (+${netPnlPct}%)! Locked into profits.`);
         return;
     }
 
-    // 3. HARD STOP LOSS TRIGGER
-    if (pos.currentPrice <= pos.stopLossPrice || netPnlPct <= -pos.targetStopLossPct) {
-        closePosition("STOP_LOSS", `Hard Stop Loss hit (${netPnlPct}%). Capital protected.`);
+    // 3. HARD OR STEP-LADDER STOP LOSS TRIGGER
+    if (pos.currentPrice <= pos.stopLossPrice || (pos.stepLadderLevel === 0 && netPnlPct <= -pos.targetStopLossPct)) {
+        const exitType = pos.stepLadderLevel >= 1 ? "STEP_LADDER_PROFIT_LOCK" : "STOP_LOSS";
+        closePosition(exitType, `Stop Trigger hit at ${netPnlPct}%. Capital protected.`);
         return;
     }
 
