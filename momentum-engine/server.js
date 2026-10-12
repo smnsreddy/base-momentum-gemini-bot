@@ -406,20 +406,15 @@ function runPredictiveWatchdog(marketList) {
     }
 
     // ==========================================
-    // SMART ADAPTIVE TIME-DECAY AUTO-ESCAPE
-    // At minute 7, check buy pressure before cutting:
-    // - If buy pressure is still healthy (>=52%) and 5m velocity is non-negative: Grant 5-min extension (up to 12 mins) to let setup pump.
-    // - If buy pressure dropped (<52%) or velocity is negative: Escape cleanly at ~0.0% loss.
+    // PROFIT-ONLY IDLE EXIT SHIELD (NO TIMER CUTS IN RED)
+    // Rule: The bot NEVER cuts a trade on a timer if it is in the red (negative).
+    // - If time passes 10+ mins and trade is slightly positive (netPnlPct >= +0.05%): Bank the micro-win cleanly.
+    // - If trade is slightly negative (-0.01% to -1.2%): DO NOT CUT ON TIME! Give it full room to bounce.
+    //   Only exit if the actual Hard Stop Loss (-1.3%) is breached or Predictive Watchdog detects an active Whale Dump.
     // ==========================================
-    const isHealthyToHold = liveData && liveData.buyPressureRatio >= 52 && liveData.priceChange5m >= -0.15;
-    
-    if (minutesOpen >= 7 && Math.abs(netPnlPct) < 0.35) {
-        if (isHealthyToHold && minutesOpen < 12) {
-            analysisNote = `⏳ Minute 7 Check: Buy pressure strong (${liveData.buyPressureRatio}%). Extended to min 12 to let setup pump.`;
-        } else {
-            closePosition("TIME_DECAY_ESCAPE", `Trade stagnant after ${minutesOpen.toFixed(1)} mins (${netPnlPct}%). Buyers dried up (${liveData ? liveData.buyPressureRatio : 0}%). Capital freed cleanly.`);
-            return;
-        }
+    if (minutesOpen >= 10 && netPnlPct >= 0.05) {
+        closePosition("IDLE_PROFIT_TAKE", `Trade idle at ${minutesOpen.toFixed(1)}m. Locked in micro-profit (+${netPnlPct}%). Capital preserved.`);
+        return;
     }
 
     BOT_STATE.watchdogTelemetry = {
