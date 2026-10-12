@@ -402,17 +402,47 @@ async function evaluateExpandedMarket() {
                         );
 
                         // Router addresses on Base Mainnet
-                        const AERO_ROUTER = process.env.AERODROME_ROUTER_BASE || '0xcF77a3Ba9A5CA399B7c97c749566343833341fd7';
-                        const UNI_ROUTER = process.env.UNISWAP_V3_ROUTER_BASE || '0x2626664c2603336E57B271c5C0b26F421741e481';
+                        // Build actual encoded calldata for Swap 1 and Swap 2
+                        const aeroIface = new ethers.Interface([
+                            'function swapExactTokensForTokens(uint amountIn, uint amountOutMin, (address from, address to, bool stable)[] routes, address to, uint deadline) external returns (uint[] amounts)'
+                        ]);
+                        const uniIface = new ethers.Interface([
+                            'function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96) params) external returns (uint256 amountOut)'
+                        ]);
+
+                        const deadline = Math.floor(Date.now() / 1000) + 120;
+                        const targetToken = topCandidate.address || '0x532f27101965dd16442E59d40670FaF5eBB142E4';
+
+                        // Aerodrome Swap Data: WETH -> Target Token
+                        const aeroRoutes = [{ from: WETH_ADDR, to: targetToken, stable: false }];
+                        const swapDataAero = aeroIface.encodeFunctionData('swapExactTokensForTokens', [
+                            borrowAmountWei,
+                            0n,
+                            aeroRoutes,
+                            CONTRACT_ADDRESS,
+                            deadline
+                        ]);
+
+                        // Uniswap V3 Swap Data: Target Token -> WETH
+                        const uniParams = {
+                            tokenIn: targetToken,
+                            tokenOut: WETH_ADDR,
+                            fee: 3000, // 0.3% tier
+                            recipient: CONTRACT_ADDRESS,
+                            deadline: deadline,
+                            amountIn: 0n, // Auto-sweep inside contract
+                            amountOutMinimum: 0n,
+                            sqrtPriceLimitX96: 0n
+                        };
+                        const swapDataUni = uniIface.encodeFunctionData('exactInputSingle', [uniParams]);
 
                         // Encode ArbParams struct
                         const coder = ethers.AbiCoder.defaultAbiCoder();
-                        const dummySwapData = '0x';
                         const minProfitWei = ethers.parseEther('0.00001'); // At least ~$0.02 profit
 
                         const encodedParams = coder.encode(
                             ['tuple(address routerA, address routerB, bytes swapDataA, bytes swapDataB, uint256 minProfit)'],
-                            [[AERO_ROUTER, UNI_ROUTER, dummySwapData, dummySwapData, minProfitWei]]
+                            [[AERO_ROUTER, UNI_ROUTER, swapDataAero, swapDataUni, minProfitWei]]
                         );
 
                         // TIER 1: ZERO-FEE SAFETY SIMULATION VIA eth_call
