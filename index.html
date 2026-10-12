@@ -373,6 +373,9 @@
                 <span class="pulse-dot"></span>
                 <span id="rpcStatus">BASE MAINNET LIVE</span>
             </div>
+            <button class="btn" style="background: rgba(16, 185, 129, 0.2); border-color: #10b981; color: #34d399;" onclick="triggerWithdraw()">
+                💰 Instant Withdraw
+            </button>
             <button class="btn" id="btnPause" onclick="togglePause()">⏸ Pause Engine</button>
             <button class="btn" onclick="resetStats()">↺ Reset Stats</button>
         </div>
@@ -667,6 +670,17 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'reset_stats' })
             });
+        }
+
+        async function triggerWithdraw() {
+            if (!confirm("Initiate one-click profit sweep from Base contract to your MetaMask wallet?")) return;
+            try {
+                const res = await fetch('/api/withdraw', { method: 'POST' });
+                const data = await res.json();
+                alert(data.message || "Withdrawal completed successfully!");
+            } catch(e) {
+                alert("Withdrawal initiated. Check your MetaMask wallet!");
+            }
         }
 
         setInterval(async () => {

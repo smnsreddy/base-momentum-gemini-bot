@@ -433,6 +433,24 @@ app.get('/api/state', (req, res) => {
     res.json(getScannerSnapshot());
 });
 
+app.post('/api/withdraw', async (req, res) => {
+    try {
+        if (!liveWallet) {
+            return res.json({ success: false, message: "No live wallet configured in .env" });
+        }
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, contractAbi, liveWallet);
+        const contractBal = await baseProvider.getBalance(CONTRACT_ADDRESS);
+        if (contractBal > 0n) {
+            const tx = await contract.withdrawETH();
+            await tx.wait();
+            return res.json({ success: true, message: `Withdrew ${ethers.formatEther(contractBal)} ETH directly to your MetaMask wallet! Tx: ${tx.hash}` });
+        }
+        res.json({ success: true, message: `Contract balance is 0 ETH. Real profits are sent directly on each confirmed flash arb trade!` });
+    } catch(e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
 app.post('/api/control', (req, res) => {
     const { action } = req.body;
     if (action === 'pause') SCANNER_STATE.isRunning = false;
