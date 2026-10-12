@@ -205,7 +205,9 @@ async function scanMarketOpportunities() {
 }
 
 /**
- * Entry Logic (The Brain)
+ * Entry Logic (The Dual-Regime Brain)
+ * 1. Regime A: Bullish Momentum Breakout (Targets +3.0%)
+ * 2. Regime B: Mean Reversion Channel Scalper (Targets +1.8% on oversold bounces in flat markets)
  */
 function evaluateNewEntry(marketList) {
     if (BOT_STATE.activePosition) return;
@@ -213,19 +215,48 @@ function evaluateNewEntry(marketList) {
         return; // Daily Circuit Breaker Active - Preserves Capital!
     }
 
-    // Sort by Momentum Score descending
-    const candidates = marketList.filter(m => m.momentumScore >= 75 && m.priceChange5m > 0.6);
-    if (candidates.length === 0) return;
+    // REGIME A: Breakout Candidates
+    const breakoutCandidates = marketList.filter(m => m.momentumScore >= 75 && m.priceChange5m > 0.6);
+    
+    // REGIME B: Mean Reversion Sideways Scalp Candidates
+    // In a flat 1h market (-1.5% to +1.5%), if short-term 5m dips below -0.6% with solid volume, buy the channel floor!
+    const rangeScalpCandidates = marketList.filter(m => 
+        Math.abs(m.priceChange1h) <= 2.0 && // Flat overall range
+        m.priceChange5m <= -0.4 &&         // Short-term oversold dip to channel floor
+        m.volume1h > 10000 &&              // Liquid pool
+        m.buyPressureRatio >= 40           // Buyers still present, not in a free-fall dump
+    );
 
-    const topPick = candidates[0];
+    let topPick = null;
+    let strategyType = "";
+    let targetTakeProfitPct = BOT_STATE.riskEngine.takeProfitPct; // Default +3.0%
+    let targetStopLossPct = BOT_STATE.riskEngine.hardStopLossPct; // Default -1.5%
+    let reasonText = "";
+
+    if (breakoutCandidates.length > 0) {
+        topPick = breakoutCandidates[0];
+        strategyType = "MOMENTUM_BREAKOUT";
+        targetTakeProfitPct = 3.2;
+        targetStopLossPct = 1.5;
+        reasonText = `🚀 Breakout Setup: Momentum Score ${topPick.momentumScore}/100. Buyers dominating (${topPick.buyPressureRatio}%).`;
+    } else if (rangeScalpCandidates.length > 0) {
+        topPick = rangeScalpCandidates[0];
+        strategyType = "MEAN_REVERSION_SCALP";
+        targetTakeProfitPct = 1.8; // Quick +1.8% channel scalp
+        targetStopLossPct = 1.2;  // Tight -1.2% floor cut
+        reasonText = `🎯 Sideways Channel Scalp: Bought oversold floor (${topPick.priceChange5m}% 5m dip in a flat 1h range). Target: +1.8% mean bounce.`;
+    }
+
+    if (!topPick) return;
 
     // Enter Position
     const entryPrice = topPick.currentPrice;
-    const stopLossPrice = entryPrice * (1 - (BOT_STATE.riskEngine.hardStopLossPct / 100));
-    const targetProfitPrice = entryPrice * (1 + (BOT_STATE.riskEngine.takeProfitPct / 100));
+    const stopLossPrice = entryPrice * (1 - (targetStopLossPct / 100));
+    const targetProfitPrice = entryPrice * (1 + (targetTakeProfitPct / 100));
 
     BOT_STATE.activePosition = {
         id: `POS_${Date.now()}`,
+        strategy: strategyType,
         symbol: topPick.symbol,
         token: topPick.token,
         dex: topPick.dex,
@@ -235,19 +266,20 @@ function evaluateNewEntry(marketList) {
         sizeUSDT: BOT_STATE.riskEngine.tradeSizeUSDT,
         stopLossPrice: stopLossPrice,
         takeProfitPrice: targetProfitPrice,
+        targetTakeProfitPct: targetTakeProfitPct,
         trailingActivated: false,
         entryTimestamp: Date.now(),
         pnlPct: 0.0,
         pnlUSDT: 0.0,
-        reason: `Breakout detected! Momentum Score: ${topPick.momentumScore}/100. Buy Pressure: ${topPick.buyPressureRatio}%`
+        reason: reasonText
     };
 
     BOT_STATE.recentSignals.unshift({
         time: new Date().toLocaleTimeString(),
-        type: "ENTER_POSITION",
+        type: `ENTER_${strategyType}`,
         symbol: topPick.symbol,
         price: `$${entryPrice.toFixed(4)}`,
-        reason: BOT_STATE.activePosition.reason
+        reason: reasonText
     });
     if (BOT_STATE.recentSignals.length > 15) BOT_STATE.recentSignals.pop();
 }
