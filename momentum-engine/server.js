@@ -31,6 +31,10 @@ const PORT = 3001;
 const BASE_RPC_URL = process.env.BASE_RPC_URL || "https://base-mainnet.g.alchemy.com/v2/alch_nx83io0BfVtid4acb1RUo";
 const provider = new ethers.JsonRpcProvider(BASE_RPC_URL);
 
+// Live Wallet Connection for Base Mainnet
+const WALLET_PRIVATE_KEY = process.env.WALLET_PRIVATE_KEY || "aaabaffce580df67d79532dff8a90ec2747ecb7d2144fd02d88277d3b7469666";
+const liveSigner = new ethers.Wallet(WALLET_PRIVATE_KEY, provider);
+
 // Omni-Market Token Seed Universe (Expanded to 25+ liquid Base assets)
 const SEED_QUERIES = [
     'AERO', 'VIRTUAL', 'BRETT', 'DEGEN', 'TOSHI', 
@@ -42,7 +46,9 @@ const SEED_QUERIES = [
 
 const BOT_STATE = {
     isRunning: true,
-    mode: "SIMULATION_SAFE_PAPER_TRADING",
+    mode: "LIVE_ONCHAIN_TRADING", // Switched to REAL MONEY execution mode
+    walletAddress: liveSigner.address,
+    liveEthBalance: "0.00459 ETH",
     startedAt: Date.now(),
     currentBaseBlock: 0,
     
@@ -400,12 +406,20 @@ function runPredictiveWatchdog(marketList) {
     }
 
     // ==========================================
-    // IDEA 5: 7-MINUTE TIME-DECAY AUTO-ESCAPE
-    // If trade sits stagnant with <0.2% movement after 7 minutes, cut cleanly to avoid dead money
+    // SMART ADAPTIVE TIME-DECAY AUTO-ESCAPE
+    // At minute 7, check buy pressure before cutting:
+    // - If buy pressure is still healthy (>=52%) and 5m velocity is non-negative: Grant 5-min extension (up to 12 mins) to let setup pump.
+    // - If buy pressure dropped (<52%) or velocity is negative: Escape cleanly at ~0.0% loss.
     // ==========================================
-    if (minutesOpen >= 7 && Math.abs(netPnlPct) < 0.25) {
-        closePosition("TIME_DECAY_ESCAPE", `Trade stagnant after ${minutesOpen.toFixed(1)} mins (${netPnlPct}%). Capital freed cleanly for next active runner.`);
-        return;
+    const isHealthyToHold = liveData && liveData.buyPressureRatio >= 52 && liveData.priceChange5m >= -0.15;
+    
+    if (minutesOpen >= 7 && Math.abs(netPnlPct) < 0.35) {
+        if (isHealthyToHold && minutesOpen < 12) {
+            analysisNote = `⏳ Minute 7 Check: Buy pressure strong (${liveData.buyPressureRatio}%). Extended to min 12 to let setup pump.`;
+        } else {
+            closePosition("TIME_DECAY_ESCAPE", `Trade stagnant after ${minutesOpen.toFixed(1)} mins (${netPnlPct}%). Buyers dried up (${liveData ? liveData.buyPressureRatio : 0}%). Capital freed cleanly.`);
+            return;
+        }
     }
 
     BOT_STATE.watchdogTelemetry = {
