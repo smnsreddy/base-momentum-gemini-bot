@@ -705,7 +705,16 @@
             // Update Execution Log
             const logBox = document.getElementById('tradeLogBox');
             if (state.liveOpportunityLog && state.liveOpportunityLog.length > 0) {
-                logBox.innerHTML = state.liveOpportunityLog.map(l => `
+                logBox.innerHTML = state.liveOpportunityLog.map(l => {
+                    const isMined = l.status === 'LIVE_ONCHAIN_EXECUTED_MINED';
+                    const badge = isMined
+                        ? `<span style="color: #34d399; font-weight: 800; margin-left: 8px; font-size: 0.75rem; background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; padding: 2px 8px; border-radius: 4px;">🚀 MINED ON-CHAIN</span>`
+                        : `<span style="color: #fbbf24; font-weight: 700; margin-left: 8px; font-size: 0.75rem; background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.3); padding: 2px 8px; border-radius: 4px;">🛡️ SIM_BLOCKED (ZERO GAS)</span>`;
+                    
+                    const profitColor = isMined ? '#34d399' : '#94a3b8';
+                    const profitLabel = isMined ? l.profitINR : '₹0.00 (Protected)';
+
+                    return `
                     <div class="log-entry">
                         <div>
                             <span style="color: var(--text-dim);">${l.timestamp}</span>
@@ -715,12 +724,13 @@
                         </div>
                         <div>
                             <span style="color: #38bdf8; margin-right: 10px;">Borrow: $${l.borrowUSD}</span>
-                            <span style="color: #34d399; font-weight: 800; margin-right: 10px;">${l.profitINR}</span>
-                            <span style="color: var(--text-dim); font-size: 0.72rem;">Gas: ${l.gasCostINR}</span>
-                            <span style="color: #38bdf8; font-weight: 700; margin-left: 8px; font-size: 0.75rem; background: rgba(56, 189, 248, 0.15); padding: 2px 6px; border-radius: 4px;">⚡ REALISTIC_FILL</span>
+                            <span style="color: ${profitColor}; font-weight: 800; margin-right: 10px;">${profitLabel}</span>
+                            <span style="color: var(--text-dim); font-size: 0.72rem;">Gas: ₹0.00</span>
+                            ${badge}
                         </div>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
             } else {
                 logBox.innerHTML = `
                     <div style="color: var(--text-dim); text-align: center; padding: 40px 0;">

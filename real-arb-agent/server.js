@@ -379,29 +379,10 @@ async function evaluateExpandedMarket() {
                     lastPriceDiff: currentPriceDiff
                 };
 
-                // Real-World Haircut: In live production, competing bots and tick-distribution friction
-                // capture ~25% of the edge, leaving 75% realistic net take-home profit.
                 const realisticProfitUSD = Number((topCandidate.estNetProfitUSD * 0.75).toFixed(2));
                 const realisticProfitINR = Number((realisticProfitUSD * INR_PER_USD).toFixed(2));
-
-                SCANNER_STATE.confirmedTrades++;
-                SCANNER_STATE.netRealizedProfitUSD += realisticProfitUSD;
-                SCANNER_STATE.netRealizedProfitINR += realisticProfitINR;
-
-                const gasCostINR = 0.32;
-                SCANNER_STATE.budget.gasSpentINR += gasCostINR;
-                
-                const selfFundSweep = realisticProfitINR * 0.15;
-                SCANNER_STATE.budget.selfFundedReplenishedINR += selfFundSweep;
-                
-                SCANNER_STATE.budget.currentINR = Number(
-                    (INITIAL_BUDGET_INR - SCANNER_STATE.budget.gasSpentINR + SCANNER_STATE.budget.selfFundedReplenishedINR).toFixed(2)
-                );
-                SCANNER_STATE.budget.currentUSD = Number((SCANNER_STATE.budget.currentINR / INR_PER_USD).toFixed(2));
-                SCANNER_STATE.budget.runwayTradesLeft = Math.floor(SCANNER_STATE.budget.currentINR / gasCostINR);
-
                 let txHashStr = `0x${ethers.hexlify(ethers.randomBytes(32)).substring(2)}`;
-                let statusLabel = "SIMULATED_MAINNET_FILL";
+                let statusLabel = "PRE_SIM_TESTING";
 
                 // ==============================================================
                 // LIVE ON-CHAIN FLASH LOAN EXECUTION ENGINE
@@ -521,12 +502,30 @@ async function evaluateExpandedMarket() {
                             );
                             txHashStr = tx.hash;
                             statusLabel = "LIVE_ONCHAIN_EXECUTED_MINED";
+                            await tx.wait(1);
+                            await syncContractBalance();
+
+                            // ONLY INCREMENT TRADES & PROFIT AFTER ON-CHAIN CONFIRMATION
+                            SCANNER_STATE.confirmedTrades++;
+                            SCANNER_STATE.netRealizedProfitUSD += realisticProfitUSD;
+                            SCANNER_STATE.netRealizedProfitINR += realisticProfitINR;
+
+                            const gasCostINR = 0.32;
+                            SCANNER_STATE.budget.gasSpentINR += gasCostINR;
+                            
+                            const selfFundSweep = realisticProfitINR * 0.15;
+                            SCANNER_STATE.budget.selfFundedReplenishedINR += selfFundSweep;
+                            
+                            SCANNER_STATE.budget.currentINR = Number(
+                                (INITIAL_BUDGET_INR - SCANNER_STATE.budget.gasSpentINR + SCANNER_STATE.budget.selfFundedReplenishedINR).toFixed(2)
+                            );
+                            SCANNER_STATE.budget.currentUSD = Number((SCANNER_STATE.budget.currentINR / INR_PER_USD).toFixed(2));
+                            SCANNER_STATE.budget.runwayTradesLeft = Math.floor(SCANNER_STATE.budget.currentINR / gasCostINR);
+
                             SCANNER_STATE.pipelineTelemetry.stage = "STEP_4_MINED_SETTLED";
                             SCANNER_STATE.pipelineTelemetry.stageTitle = "Step 4 • Transaction Mined On-Chain!";
                             SCANNER_STATE.pipelineTelemetry.stageDetail = `Net arbitrage profit settled into contract vault! 1-Click Withdrawable.`;
                             SCANNER_STATE.pipelineTelemetry.simStatus = "MINED";
-                            await tx.wait(1);
-                            await syncContractBalance();
                         }
                     } catch (broadcastErr) {
                         console.error("[LIVE BROADCAST]", broadcastErr.message);
