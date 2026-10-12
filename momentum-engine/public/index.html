@@ -231,8 +231,41 @@
     <!-- Active Trade Section -->
     <div id="positionContainer">
         <div class="no-position">
-            <div style="font-size: 1.1rem; font-weight: 700; color: #fff;">🔍 Market Scanner Active</div>
-            <div style="font-size: 0.82rem; margin-top: 4px;">Evaluating top Base pairs for strong volume breakout triggers (Score &ge; 75/100). Sitting in 100% safe cash until edge is found.</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: #fff;">🔍 Omni-Market Scanner Active</div>
+            <div style="font-size: 0.82rem; margin-top: 4px;">Scanning 25+ liquid Base pairs dynamically. Evaluating Breakouts, Channel Scalps & Pullbacks. Capital 100% shielded.</div>
+        </div>
+    </div>
+
+    <!-- Predictive AI Watchdog & Early-Kill Telemetry Card -->
+    <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 14px; padding: 18px 22px; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="pulse-dot" style="background: #a855f7; box-shadow: 0 0 10px #a855f7;"></span>
+                <span style="font-size: 0.85rem; font-weight: 800; color: #c084fc; text-transform: uppercase;">🧠 Background Predictive AI Watchdog (Early Reversal Detector)</span>
+            </div>
+            <div style="font-size: 0.72rem; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); padding: 3px 10px; border-radius: 6px; font-weight: 700;" id="watchdogStatusBadge">
+                STATUS: IDLE
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; align-items: center;">
+            <div>
+                <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">Real-Time Market Predictive Analysis</div>
+                <div style="font-size: 0.88rem; color: #fff; font-weight: 600; margin-top: 4px;" id="watchdogAnalysisNote">
+                    Scanning 25+ Base pairs for statistical edge...
+                </div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">Reversal Risk Factor</div>
+                <div class="mono" style="font-size: 1.2rem; font-weight: 800; color: #34d399; margin-top: 4px;" id="reversalRiskVal">
+                    0% (Low Risk)
+                </div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">AI Recommendation</div>
+                <div class="mono" style="font-size: 0.95rem; font-weight: 800; color: #38bdf8; margin-top: 4px;" id="aiRecommendationVal">
+                    SEARCHING_OMNI_MARKET
+                </div>
+            </div>
         </div>
     </div>
 
@@ -327,6 +360,26 @@
                         <div style="font-size: 0.82rem; margin-top: 4px;">Evaluating top Base pairs for strong volume breakout triggers (Score &ge; 75/100). Sitting in 100% safe cash until high-probability setup appears.</div>
                     </div>
                 `;
+            }
+
+            // Predictive Watchdog Telemetry Updates
+            if (state.watchdogTelemetry) {
+                const wt = state.watchdogTelemetry;
+                const statusBadge = document.getElementById('watchdogStatusBadge');
+                if (statusBadge) statusBadge.innerText = `STATUS: ${wt.status || 'ACTIVE'}`;
+                const noteEl = document.getElementById('watchdogAnalysisNote');
+                if (noteEl) noteEl.innerText = wt.lastAnalysisNote || 'Scanning 25+ Base pairs for statistical edge...';
+                const riskEl = document.getElementById('reversalRiskVal');
+                if (riskEl) {
+                    const rRisk = wt.reversalRiskPct || 0;
+                    riskEl.innerText = `${rRisk}% (${rRisk >= 65 ? 'DANGER - KILL TRIGGER' : (rRisk >= 40 ? 'ELEVATED' : 'LOW RISK')})`;
+                    riskEl.style.color = rRisk >= 65 ? '#f43f5e' : (rRisk >= 40 ? '#fbbf24' : '#34d399');
+                }
+                const recEl = document.getElementById('aiRecommendationVal');
+                if (recEl) {
+                    recEl.innerText = wt.actionRecommendation || 'HOLD';
+                    recEl.style.color = wt.actionRecommendation === 'PREDICTIVE_KILL_RECOMMENDED' ? '#f43f5e' : '#38bdf8';
+                }
             }
 
             // Scanner Table
