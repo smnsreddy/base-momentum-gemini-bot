@@ -715,18 +715,23 @@
                     const profitLabel = isMined ? l.profitINR : '₹0.00 (Protected)';
 
                     return `
-                    <div class="log-entry">
-                        <div>
-                            <span style="color: var(--text-dim);">${l.timestamp}</span>
-                            <span style="color: #38bdf8; font-weight: 700; margin-left: 8px;">Block #${l.blockNumber}</span>
-                            <span style="color: #fff; font-weight: 600; margin-left: 8px;">${l.pair}</span>
-                            <span style="color: var(--text-dim); margin-left: 6px;">(${l.route})</span>
+                    <div class="log-entry" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                            <div>
+                                <span style="color: var(--text-dim);">${l.timestamp}</span>
+                                <span style="color: #38bdf8; font-weight: 700; margin-left: 8px;">Block #${l.blockNumber}</span>
+                                <span style="color: #fff; font-weight: 600; margin-left: 8px;">${l.pair}</span>
+                                <span style="color: var(--text-dim); margin-left: 6px;">(${l.route})</span>
+                            </div>
+                            <div>
+                                <span style="color: #38bdf8; margin-right: 10px;">Borrow: $${l.borrowUSD}</span>
+                                <span style="color: ${profitColor}; font-weight: 800; margin-right: 10px;">${profitLabel}</span>
+                                <span style="color: var(--text-dim); font-size: 0.72rem;">Gas: ₹0.00</span>
+                                ${badge}
+                            </div>
                         </div>
-                        <div>
-                            <span style="color: #38bdf8; margin-right: 10px;">Borrow: $${l.borrowUSD}</span>
-                            <span style="color: ${profitColor}; font-weight: 800; margin-right: 10px;">${profitLabel}</span>
-                            <span style="color: var(--text-dim); font-size: 0.72rem;">Gas: ₹0.00</span>
-                            ${badge}
+                        <div style="font-size: 0.74rem; color: #94a3b8; background: rgba(15, 23, 42, 0.6); padding: 4px 8px; border-radius: 4px; width: 100%;">
+                            <span style="color: #fbbf24; font-weight: 700;">WHY NOT EXECUTED:</span> ${l.rejectionReason || 'AMM tick slippage or spread closed on-chain. Zero-gas shield saved wallet gas.'}
                         </div>
                     </div>
                     `;

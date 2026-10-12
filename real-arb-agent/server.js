@@ -532,6 +532,18 @@ async function evaluateExpandedMarket() {
                     }
                 }
 
+                // Human-readable diagnostic explaining why simulation passed or reverted
+                let humanReason = "AMM spread closed: Real-world AMM ticks returned less than debt + hurdle. Shield saved gas!";
+                if (simErrorDetail.includes("Arbitrage not profitable")) {
+                    humanReason = "Negative Net Return: Swaps output less than Aave loan principal + 0.05% fee.";
+                } else if (simErrorDetail.includes("Swap A failed")) {
+                    humanReason = "Router A tick liquidity insufficient for dynamic borrow size.";
+                } else if (simErrorDetail.includes("Swap B failed")) {
+                    humanReason = "Router B fee pool depth exceeded; price slipped past limit.";
+                } else if (simSuccess) {
+                    humanReason = "VERIFIED PROFITABLE: Successfully mined on Base Mainnet!";
+                }
+
                 // Log execution
                 SCANNER_STATE.liveOpportunityLog.unshift({
                     timestamp: new Date().toLocaleTimeString(),
@@ -547,7 +559,8 @@ async function evaluateExpandedMarket() {
                     profitUSD: `+$${realisticProfitUSD}`,
                     gasCostINR: "₹0.32",
                     txHash: txHashStr,
-                    status: statusLabel
+                    status: statusLabel,
+                    rejectionReason: humanReason
                 });
 
                 if (SCANNER_STATE.liveOpportunityLog.length > 20) {
