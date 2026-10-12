@@ -402,9 +402,12 @@ async function evaluateExpandedMarket() {
                         );
 
                         // Router addresses on Base Mainnet
-                        // Build actual encoded calldata for Swap 1 and Swap 2
-                        const aeroIface = new ethers.Interface([
-                            'function swapExactTokensForTokens(uint amountIn, uint amountOutMin, (address from, address to, bool stable)[] routes, address to, uint deadline) external returns (uint[] amounts)'
+                        // Router addresses on Base Mainnet (Slipstream CL + Uniswap V3)
+                        const AERO_SLIPSTREAM_ROUTER = ethers.getAddress('0xBE6D8f0d05cC4be24d5167a3eF062215bE6D18a5');
+                        const UNI_ROUTER = ethers.getAddress('0x2626664c2603336e57b271c5c0b26f421741e481');
+
+                        const aeroSlipstreamIface = new ethers.Interface([
+                            'function exactInputSingle((address tokenIn, address tokenOut, int24 tickSpacing, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96) params) external returns (uint256 amountOut)'
                         ]);
                         const uniIface = new ethers.Interface([
                             'function exactInputSingle((address tokenIn, address tokenOut, uint24 fee, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 sqrtPriceLimitX96) params) external returns (uint256 amountOut)'
@@ -413,19 +416,18 @@ async function evaluateExpandedMarket() {
                         const deadline = Math.floor(Date.now() / 1000) + 120;
                         const targetToken = topCandidate.address || '0x532f27101965dd16442E59d40670FaF5eBB142E4';
 
-                        // Router addresses on Base Mainnet (Checksum verified)
-                        const AERO_ROUTER = ethers.getAddress('0xcf77a3ba9a5ca399b7c97c749566343833341fd7');
-                        const UNI_ROUTER = ethers.getAddress('0x2626664c2603336e57b271c5c0b26f421741e481');
-
-                        // Aerodrome Swap Data: WETH -> Target Token
-                        const aeroRoutes = [{ from: WETH_ADDR, to: targetToken, stable: false }];
-                        const swapDataAero = aeroIface.encodeFunctionData('swapExactTokensForTokens', [
-                            borrowAmountWei,
-                            0n,
-                            aeroRoutes,
-                            CONTRACT_ADDRESS,
-                            deadline
-                        ]);
+                        // Aerodrome Slipstream Swap Data: WETH -> Target Token
+                        const aeroSlipParams = {
+                            tokenIn: WETH_ADDR,
+                            tokenOut: targetToken,
+                            tickSpacing: 100, // Standard 100 tick spacing on Base Slipstream
+                            recipient: CONTRACT_ADDRESS,
+                            deadline: deadline,
+                            amountIn: borrowAmountWei,
+                            amountOutMinimum: 0n,
+                            sqrtPriceLimitX96: 0n
+                        };
+                        const swapDataAero = aeroSlipstreamIface.encodeFunctionData('exactInputSingle', [aeroSlipParams]);
 
                         // Uniswap V3 Swap Data: Target Token -> WETH
                         const uniParams = {
@@ -446,7 +448,7 @@ async function evaluateExpandedMarket() {
 
                         const encodedParams = coder.encode(
                             ['tuple(address routerA, address routerB, address intermediateToken, bytes swapDataA, bytes swapDataB, uint256 minProfit)'],
-                            [[AERO_ROUTER, UNI_ROUTER, targetToken, swapDataAero, swapDataUni, minProfitWei]]
+                            [[AERO_SLIPSTREAM_ROUTER, UNI_ROUTER, targetToken, swapDataAero, swapDataUni, minProfitWei]]
                         );
 
                         // TIER 1: ZERO-FEE SAFETY SIMULATION VIA eth_call
