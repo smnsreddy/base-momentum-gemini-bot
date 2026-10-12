@@ -24,6 +24,7 @@ contract BaseArbitrageExecutor {
     struct ArbParams {
         address routerA;
         address routerB;
+        address intermediateToken;
         bytes swapDataA;
         bytes swapDataB;
         uint256 minProfit;
@@ -67,27 +68,31 @@ contract BaseArbitrageExecutor {
         ArbParams memory p = abi.decode(params, (ArbParams));
         uint256 totalOwed = amount + premium;
 
-        // Execute Swap 1 on DEX A
+        // 1. APPROVE ROUTER A TO SPEND FLASH LOAN ASSET (e.g. WETH)
+        IERC20(asset).approve(p.routerA, amount);
+
+        // 2. EXECUTE SWAP 1 ON DEX A
         (bool okA, ) = p.routerA.call(p.swapDataA);
         require(okA, "Swap A failed");
 
-        // Execute Swap 2 on DEX B
+        // 3. APPROVE ROUTER B TO SPEND INTERMEDIATE TOKEN (e.g. BRETT / VIRTUAL)
+        uint256 interBal = IERC20(p.intermediateToken).balanceOf(address(this));
+        require(interBal > 0, "Zero intermediate received");
+        IERC20(p.intermediateToken).approve(p.routerB, interBal);
+
+        // 4. EXECUTE SWAP 2 ON DEX B
         (bool okB, ) = p.routerB.call(p.swapDataB);
         require(okB, "Swap B failed");
 
-        // Invariant check: Ensure balance covers debt + premium + minProfit
+        // 5. INVARIANT CHECK: ENSURE FINAL ASSET BALANCE COVERS DEBT + PROFIT
         uint256 currentBalance = IERC20(asset).balanceOf(address(this));
         require(currentBalance >= totalOwed + p.minProfit, "Arbitrage not profitable: REVERT");
 
-        // Approve repayment to Aave
+        // 6. APPROVE REPAYMENT TO AAVE
         IERC20(asset).approve(AAVE_POOL, totalOwed);
 
-        // Transfer profit directly to owner
+        // Retain net profit inside contract vault for 1-click owner withdrawal
         uint256 profit = currentBalance - totalOwed;
-        if (profit > 0) {
-            IERC20(asset).transfer(owner, profit);
-        }
-
         emit ArbitrageExecuted(asset, amount, profit);
         return true;
     }

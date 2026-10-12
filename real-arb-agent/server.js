@@ -413,6 +413,10 @@ async function evaluateExpandedMarket() {
                         const deadline = Math.floor(Date.now() / 1000) + 120;
                         const targetToken = topCandidate.address || '0x532f27101965dd16442E59d40670FaF5eBB142E4';
 
+                        // Router addresses on Base Mainnet (Checksum verified)
+                        const AERO_ROUTER = ethers.getAddress('0xcf77a3ba9a5ca399b7c97c749566343833341fd7');
+                        const UNI_ROUTER = ethers.getAddress('0x2626664c2603336e57b271c5c0b26f421741e481');
+
                         // Aerodrome Swap Data: WETH -> Target Token
                         const aeroRoutes = [{ from: WETH_ADDR, to: targetToken, stable: false }];
                         const swapDataAero = aeroIface.encodeFunctionData('swapExactTokensForTokens', [
@@ -430,19 +434,19 @@ async function evaluateExpandedMarket() {
                             fee: 3000, // 0.3% tier
                             recipient: CONTRACT_ADDRESS,
                             deadline: deadline,
-                            amountIn: 0n, // Auto-sweep inside contract
+                            amountIn: 0n,
                             amountOutMinimum: 0n,
                             sqrtPriceLimitX96: 0n
                         };
                         const swapDataUni = uniIface.encodeFunctionData('exactInputSingle', [uniParams]);
 
-                        // Encode ArbParams struct
+                        // Encode ArbParams struct matching BaseArbitrageExecutor.sol
                         const coder = ethers.AbiCoder.defaultAbiCoder();
                         const minProfitWei = ethers.parseEther('0.00001'); // At least ~$0.02 profit
 
                         const encodedParams = coder.encode(
-                            ['tuple(address routerA, address routerB, bytes swapDataA, bytes swapDataB, uint256 minProfit)'],
-                            [[AERO_ROUTER, UNI_ROUTER, swapDataAero, swapDataUni, minProfitWei]]
+                            ['tuple(address routerA, address routerB, address intermediateToken, bytes swapDataA, bytes swapDataB, uint256 minProfit)'],
+                            [[AERO_ROUTER, UNI_ROUTER, targetToken, swapDataAero, swapDataUni, minProfitWei]]
                         );
 
                         // TIER 1: ZERO-FEE SAFETY SIMULATION VIA eth_call
