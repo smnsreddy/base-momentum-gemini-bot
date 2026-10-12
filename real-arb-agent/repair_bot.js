@@ -18,7 +18,7 @@ require('dotenv').config();
 
 const STATE_API = "http://localhost:3000/api/state";
 const BASE_RPC = process.env.BASE_RPC_URL || "https://base-mainnet.g.alchemy.com/v2/alch_nx83io0BfVtid4acb1RUo";
-const CONTRACT_ADDRESS = process.env.ARBITRAGE_CONTRACT_ADDRESS || "0x4eF905B57f21b2f870D0deE2d35750ab8D34caEE";
+const CONTRACT_ADDRESS = process.env.ARBITRAGE_CONTRACT_ADDRESS || "0x784356783C8212159537492A756d6E1e84c2CcCC";
 
 const provider = new ethers.JsonRpcProvider(BASE_RPC);
 let wallet = null;

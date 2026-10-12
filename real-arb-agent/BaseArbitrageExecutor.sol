@@ -19,7 +19,7 @@ interface IAavePool {
 
 contract BaseArbitrageExecutor {
     address public immutable owner;
-    address public constant AAVE_POOL = 0xA238Dd80C259B70e830e05187bC07238269C277E;
+    address public constant AAVE_POOL = 0xA238Dd80C259a72e81d7e4664a9801593F98d1c5;
 
     struct ArbParams {
         address routerA;
