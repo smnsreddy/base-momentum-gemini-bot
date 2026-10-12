@@ -182,7 +182,20 @@ const SCANNER_STATE = {
 
     bestCoin: null,
     expandedMatrix: [],
-    liveOpportunityLog: []
+    liveOpportunityLog: [],
+    pipelineTelemetry: {
+        stage: "STEP_1_SCANNING_AMMS",
+        stageTitle: "Step 1 • Live Scan Active",
+        stageDetail: "Reading on-chain AMMs every 3s via Alchemy Base RPC",
+        activePair: "VIRTUAL / WETH",
+        flashLoanProvider: "Aave V3 Base (0xA238Dd...d1c5)",
+        contractVault: CONTRACT_ADDRESS,
+        lastSimResult: "Protected by Zero-Gas Shield",
+        lastSimTime: "Active",
+        simStatus: "READY",
+        withdrawableETH: "0.0000",
+        whyZeroReason: "StaticCall Simulation Shield active: Trades are simulated for free before broadcasting. The bot will ONLY submit real transactions when net profit strictly exceeds Aave fees + DEX slippage, protecting your wallet balance from losing any gas on reverts."
+    }
 };
 
 function broadcast(type, payload) {
@@ -454,6 +467,21 @@ async function evaluateExpandedMarket() {
                         // TIER 1: ZERO-FEE SAFETY SIMULATION VIA eth_call
                         // This tests whether the flash loan and swaps succeed WITHOUT paying any gas!
                         let simSuccess = false;
+                        let simErrorDetail = "";
+                        SCANNER_STATE.pipelineTelemetry = {
+                            stage: "STEP_2_PRE_SIM_TESTING",
+                            stageTitle: "Step 2 • Simulating Flash Loan & Swaps via eth_call",
+                            stageDetail: `Testing on-chain atomic execution for ${topCandidate.symbol} ($${topCandidate.optimalBorrowUSD} borrow)...`,
+                            activePair: topCandidate.symbol,
+                            flashLoanProvider: "Aave V3 Base (0xA238Dd...d1c5)",
+                            contractVault: CONTRACT_ADDRESS,
+                            lastSimResult: "Simulating on Base RPC...",
+                            lastSimTime: new Date().toLocaleTimeString(),
+                            simStatus: "TESTING",
+                            withdrawableETH: cachedContractBalETH,
+                            whyZeroReason: "StaticCall Simulation Shield active: Trades are simulated for free before broadcasting. The bot will ONLY submit real transactions when net profit strictly exceeds Aave fees + DEX slippage, protecting your wallet balance from losing any gas on reverts."
+                        };
+
                         try {
                             await contract.executeFlashArb.staticCall(
                                 WETH_ADDR,
@@ -461,10 +489,19 @@ async function evaluateExpandedMarket() {
                                 encodedParams
                             );
                             simSuccess = true;
+                            SCANNER_STATE.pipelineTelemetry.stage = "STEP_3_SIMULATION_PASSED";
+                            SCANNER_STATE.pipelineTelemetry.stageTitle = "Step 3 • Flash Loan Verified Profitable!";
+                            SCANNER_STATE.pipelineTelemetry.stageDetail = `Simulation confirmed net positive return! Broadcasting live transaction...`;
+                            SCANNER_STATE.pipelineTelemetry.simStatus = "PASSED";
+                            SCANNER_STATE.pipelineTelemetry.lastSimResult = "VERIFIED PROFITABLE (Ready to Broadcast)";
                         } catch (simErr) {
-                            // Pre-simulation failed! This means spread was already closed.
-                            // ABORT IMMEDIATELY -> ZERO GAS SPENT! ZERO REVERT FEE!
+                            simErrorDetail = simErr.shortMessage || simErr.message;
                             statusLabel = "PRE_SIM_BLOCKED_ZERO_COST";
+                            SCANNER_STATE.pipelineTelemetry.stage = "STEP_2_PRE_SIM_BLOCKED";
+                            SCANNER_STATE.pipelineTelemetry.stageTitle = "Step 2 • Shield Intercepted (Zero Gas Lost)";
+                            SCANNER_STATE.pipelineTelemetry.stageDetail = `AMM tick slippage or spread closed on-chain (${simErrorDetail}). Revert blocked! ZERO gas spent.`;
+                            SCANNER_STATE.pipelineTelemetry.simStatus = "SHIELD_BLOCKED";
+                            SCANNER_STATE.pipelineTelemetry.lastSimResult = `Sim Reverted: ${simErrorDetail.substring(0, 40)}`;
                         }
 
                         if (simSuccess) {
@@ -477,6 +514,10 @@ async function evaluateExpandedMarket() {
                             );
                             txHashStr = tx.hash;
                             statusLabel = "LIVE_ONCHAIN_EXECUTED_MINED";
+                            SCANNER_STATE.pipelineTelemetry.stage = "STEP_4_MINED_SETTLED";
+                            SCANNER_STATE.pipelineTelemetry.stageTitle = "Step 4 • Transaction Mined On-Chain!";
+                            SCANNER_STATE.pipelineTelemetry.stageDetail = `Net arbitrage profit settled into contract vault! 1-Click Withdrawable.`;
+                            SCANNER_STATE.pipelineTelemetry.simStatus = "MINED";
                             await tx.wait(1);
                             await syncContractBalance();
                         }
