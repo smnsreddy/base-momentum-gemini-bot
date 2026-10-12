@@ -105,6 +105,9 @@ function broadcast(type, payload) {
     });
 }
 
+let cachedPairsMap = new Map();
+let seedQueryIndex = 0;
+
 /**
  * Omni-Market Broad Discovery Across Base Mainnet
  */
@@ -117,17 +120,34 @@ async function scanOmniMarket() {
     } catch(e) {}
 
     try {
-        // Query multiple Base token pools concurrently
-        const fetchPromises = SEED_QUERIES.map(q => 
+        // Query in rotating batches of 5 tokens per cycle to prevent 429 HTTP rate limits
+        const batchSize = 5;
+        const currentBatch = [];
+        for (let i = 0; i < batchSize; i++) {
+            currentBatch.push(SEED_QUERIES[(seedQueryIndex + i) % SEED_QUERIES.length]);
+        }
+        seedQueryIndex = (seedQueryIndex + batchSize) % SEED_QUERIES.length;
+
+        const fetchPromises = currentBatch.map(q => 
             fetch(`https://api.dexscreener.com/latest/dex/search?q=${q}`)
-                .then(r => r.json())
-                .then(d => (d.pairs || []).filter(p => p.chainId === 'base' && (p.liquidity?.usd || 0) > 12000))
+                .then(r => r.ok ? r.json() : null)
+                .then(d => {
+                    if (!d || !d.pairs) return [];
+                    return d.pairs.filter(p => p.chainId === 'base' && (p.liquidity?.usd || 0) > 12000);
+                })
                 .catch(() => [])
         );
 
         const results = await Promise.all(fetchPromises);
-        const allPairs = results.flat();
+        const newPairs = results.flat();
 
+        // Update persistent pair cache so scanner always has deep market depth
+        for (const p of newPairs) {
+            const pairKey = `${p.baseToken.symbol}_${p.quoteToken.symbol}_${p.dexId}`;
+            cachedPairsMap.set(pairKey, p);
+        }
+
+        const allPairs = Array.from(cachedPairsMap.values());
         const seenPairs = new Set();
         const marketDataList = [];
 
@@ -563,8 +583,8 @@ provider.on('block', async (blockNumber) => {
     }
 });
 
-// Run High-Frequency Market Scanner every 1.2 seconds (Pro Speed)
-setInterval(scanOmniMarket, 1200);
+// Run High-Frequency Market Scanner every 2.0 seconds with batch rotation
+setInterval(scanOmniMarket, 2000);
 scanOmniMarket();
 
 server.listen(PORT, () => {
