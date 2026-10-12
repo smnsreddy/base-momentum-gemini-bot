@@ -462,6 +462,28 @@ function closePosition(reasonType, message) {
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/state', (req, res) => res.json(BOT_STATE));
 
+// Manual Close Active Position & Lock-In Profit/Exit Endpoint
+app.post('/api/close-position', (req, res) => {
+    if (!BOT_STATE.activePosition) {
+        return res.json({ success: false, message: "No active trade to close right now." });
+    }
+
+    const pos = BOT_STATE.activePosition;
+    const pnlSign = pos.pnlPct >= 0 ? '+' : '';
+    const exitMsg = `Manual Trader Exit at ${pnlSign}${pos.pnlPct}% (${pnlSign}$${pos.pnlUSDT}). Gains locked into vault, bot resumes market search.`;
+    
+    closePosition("MANUAL_TRADER_EXIT", exitMsg);
+    broadcast('UPDATE', BOT_STATE);
+
+    return res.json({
+        success: true,
+        closedSymbol: pos.symbol,
+        realizedPnlPct: pos.pnlPct,
+        realizedPnlUSDT: pos.pnlUSDT,
+        message: exitMsg
+    });
+});
+
 // Sweep Profit to Wallet Endpoint
 app.post('/api/sweep-profit', (req, res) => {
     const sweepAmountUSDT = BOT_STATE.capital.withdrawableProfitUSDT;
