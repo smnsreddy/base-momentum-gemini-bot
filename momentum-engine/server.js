@@ -184,6 +184,8 @@ async function scanOmniMarket() {
                 strategyScore = Math.max(0, strategyScore - 15);
             }
 
+            const cleanStrategyScore = Number(strategyScore.toFixed(1));
+
             marketDataList.push({
                 pairAddress: p.pairAddress,
                 symbol: `${p.baseToken.symbol} / ${p.quoteToken.symbol}`,
@@ -195,9 +197,9 @@ async function scanOmniMarket() {
                 volume1h,
                 liquidityUSD: Math.round(p.liquidity?.usd || 0),
                 buyPressureRatio,
-                strategyScore,
+                strategyScore: cleanStrategyScore,
                 recommendedStrategy: bestStrategy,
-                status: strategyScore >= 75 ? "HIGH_PROBABILITY_SETUP" : "SCANNING"
+                status: cleanStrategyScore >= 75 ? "HIGH_PROBABILITY_SETUP" : "SCANNING"
             });
         }
 
@@ -227,14 +229,15 @@ function evaluateOmniEntry(marketList) {
     if (BOT_STATE.activePosition) return;
     if (BOT_STATE.riskEngine.todayLossUSDT >= BOT_STATE.riskEngine.dailyMaxLossLimitUSDT) return;
 
-    const viableSetups = marketList.filter(m => m.strategyScore >= 75 && m.volume1h > 8000);
+    // Filter for viable setups with sufficient volume to ensure zero slippage
+    const viableSetups = marketList.filter(m => m.strategyScore >= 75 && m.volume1h >= 5000);
     if (viableSetups.length === 0) {
         BOT_STATE.watchdogTelemetry = {
             status: "SEARCHING_OMNI_MARKET",
             predictiveConfidence: 90,
             reversalRiskPct: 0,
             actionRecommendation: "STAY_IN_SAFE_CASH",
-            lastAnalysisNote: `Scanned ${BOT_STATE.stats.totalScannedPairs} pairs. No setup cleared the 75/100 threshold. 100% Capital Preserved.`
+            lastAnalysisNote: `Scanned ${BOT_STATE.stats.totalScannedPairs} pairs. No setup cleared the 75/100 threshold with >$5k volume. 100% Capital Preserved.`
         };
         return;
     }

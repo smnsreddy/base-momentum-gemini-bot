@@ -279,7 +279,7 @@
     <!-- Live Scanner Matrix -->
     <div class="table-box">
         <div class="section-title">
-            <span>⚡ Live Base Multi-Asset Regime Radar (Scanning Every 4s)</span>
+            <span>⚡ Live Base Multi-Asset Regime Radar (High-Frequency 1.2s • Block Event Stream)</span>
         </div>
         <table>
             <thead>
@@ -436,11 +436,15 @@
                     else if (strategyName === 'MEAN_REVERSION_SCALP') regimeBadge = `<span class="badge badge-blue">🎯 CHANNEL SCALP</span>`;
                     else if (strategyName === 'TREND_CONTINUATION') regimeBadge = `<span class="badge badge-green">📈 TREND RIDE</span>`;
 
+                    const formattedPrice = m.currentPrice < 0.01 
+                        ? `$${m.currentPrice.toFixed(6)}` 
+                        : (m.currentPrice > 1000 ? `$${m.currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : `$${m.currentPrice.toFixed(4)}`);
+
                     return `
                         <tr>
                             <td><strong>${m.symbol}</strong></td>
                             <td>${m.dex}</td>
-                            <td class="mono">$${m.currentPrice.toFixed(4)}</td>
+                            <td class="mono">${formattedPrice}</td>
                             <td class="mono" style="color: ${v5Color}; font-weight: 700;">${m.priceChange5m >= 0 ? '+' : ''}${m.priceChange5m}%</td>
                             <td class="mono" style="color: ${v1hColor}; font-weight: 700;">${m.priceChange1h >= 0 ? '+' : ''}${m.priceChange1h}%</td>
                             <td class="mono">$${m.volume1h.toLocaleString()}</td>
