@@ -442,14 +442,21 @@ async function evaluateExpandedMarket() {
                         };
                         const swapDataAero = aeroSlipstreamIface.encodeFunctionData('exactInputSingle', [aeroSlipParams]);
 
+                        // Dynamic intermediate amount calculation for Uniswap V3 Swap B:
+                        // Estimate intermediate tokens received based on borrowAmountWei and current price
+                        const estimatedTokenUnits = (Number(ethers.formatEther(borrowAmountWei)) * SCANNER_STATE.ethPriceUSD) / Math.max(0.0001, topCandidate.priceA);
+                        const estimatedTokenWei = ethers.parseUnits(
+                            estimatedTokenUnits.toFixed(topCandidate.decimals || 6), 
+                            topCandidate.decimals || 18
+                        );
+
                         // Uniswap V3 Swap Data: Target Token -> WETH
                         const uniParams = {
                             tokenIn: targetToken,
                             tokenOut: WETH_ADDR,
-                            fee: 3000, // 0.3% tier
+                            fee: 500, // Use 0.05% deep liquidity fee tier
                             recipient: CONTRACT_ADDRESS,
-                            deadline: deadline,
-                            amountIn: 0n,
+                            amountIn: estimatedTokenWei > 0n ? estimatedTokenWei : 1000000000000000000n,
                             amountOutMinimum: 0n,
                             sqrtPriceLimitX96: 0n
                         };
