@@ -375,9 +375,9 @@ async function scanOmniMarket() {
                 strategyScore = 0;
             }
 
-            // Bluechip & Verified Midcap Liquidity Premium
-            if (tokenTier === "BLUECHIP") strategyScore += 18; // Heavy institutional priority
-            if (tokenTier === "MIDCAP") strategyScore += 8;
+            // Bluechip & Verified Midcap Liquidity Premium (Deepest pools & lowest fees)
+            if (tokenTier === "BLUECHIP") strategyScore += 35; // Heavy institutional priority (deep pools, 0.05% fees)
+            if (tokenTier === "MIDCAP") strategyScore += 18;   // High-volume verified runners
 
             marketDataList.push({
                 pairAddress: p.pairAddress,
@@ -455,17 +455,17 @@ Pool USD Liquidity: $${candidate.liquidityUSD.toLocaleString()}
 
 STRICT QUANTITATIVE VETO CRITERIA (Reject if ANY condition is met):
 1. Overextended Wick / "Buying the Top": 5m price change is > +2.5% with slowing buy ratio, risking immediate mean-reversion pullback.
-2. Low-Liquidity Microcap Trap: Liquidity < $35,000 where a single $500 sell order causes a 1.3% stop-loss breach.
-3. Toxic / Forex / Pegged pairs: Any cross-rate like EURC/cbBTC, EUR, USDA, or synthetic wrapped assets.
+2. Low-Liquidity Trap: Liquidity < $75,000 for Microcaps where normal DEX spread causes premature stop-outs.
+3. Toxic / Forex / Pegged pairs: Any cross-rate like EURC, EUR, USDA, or synthetic wrapped assets.
 4. Divergence / Fakeout: 5m is green but 1h, 6h, or 24h is in an aggressive downtrend (< -15% 24h).
-5. Order-Book Exhaustion: 5m live tape has < 58% buy pressure.
+5. Order-Book Exhaustion: 5m live tape has < 55% buy pressure.
 
 If you approve the setup:
 - confidenceScore MUST be >= 85 to execute.
-- targetProfitPct: recommended dynamic profit target (e.g. 1.4 to 1.8%).
-- stopLossPct: recommended dynamic stop loss tailored to asset volatility (e.g. 0.9 to 1.3%).
+- targetProfitPct: recommended dynamic profit target (e.g. 1.4 to 2.2%).
+- stopLossPct: recommended dynamic price stop loss tailored to asset tier volatility (1.4% to 1.8% for Bluechips, 2.0% to 2.4% for Midcaps, 2.6% to 3.2% for Microcaps) to give the position adequate chart breathing room against normal AMM liquidity noise.
 - etaMinutes: realistic minutes to reach target.
-- flashMultiplier: safe sizing boost multiplier (1.0 to 3.0x, keep <= 1.0x for microcaps).
+- flashMultiplier: safe sizing boost multiplier (1.0 to 3.0x on deep Bluechips, 1.0x on volatile tokens).
 
 Return strictly valid JSON in this format:
 {
@@ -547,17 +547,19 @@ async function evaluateEntry(stateTab, marketList, mode, cooldownMap) {
         if (BANNED_TOKENS.has(baseLower)) return false;
         if (m.symbol.includes("EURC") || m.symbol.includes("EUR") || m.symbol.includes("USD+")) return false;
 
-        // Liquidity depth gate: At least $35k pool depth to prevent microcap dump wicks
+        // Liquidity depth gate: Microcaps must have at least $75,000 pool depth to prevent spread traps
+        if (m.tokenTier === "MICROCAP" && m.liquidityUSD < 75000) return false;
         if (m.liquidityUSD < 35000) return false;
 
-        // 1h Volume gate: At least $15k volume
-        if (m.volume1h < 15000) return false;
+        // 1h Volume gate: Bluechips/Midcaps need $5k+, Microcaps need $20k+
+        const minVol1h = m.tokenTier === "MICROCAP" ? 20000 : 5000;
+        if (m.volume1h < minVol1h) return false;
 
-        // 5m Order-Book Tape: At least 58% buy pressure
-        if ((m.buyRatio5m || 0) < 58) return false;
+        // 5m Order-Book Tape: At least 55% buy pressure
+        if ((m.buyRatio5m || 0) < 55) return false;
 
         // Multi-timeframe trend: 1h must be positive or stable
-        if (m.priceChange1h < -0.1) return false;
+        if (m.priceChange1h < -0.15) return false;
 
         // No overextended wicks: 5m price change must not exceed +2.5% (avoids buying the top)
         if (m.priceChange5m > 2.5) return false;
@@ -628,9 +630,12 @@ async function evaluateEntry(stateTab, marketList, mode, cooldownMap) {
 
     const tradeSizeUSD = Number((baseCapitalUSD + autoFlashBoostUSD).toFixed(2));
 
-    // Dynamic Stop Loss and Take Profit calculated by Gemini AI
-    let takeProfitPct = Number((aiEval.targetProfitPct || (topPick.tokenTier === "BLUECHIP" ? 1.40 : 1.70)).toFixed(2));
-    let stopLossPct = Number((aiEval.stopLossPct || (topPick.tokenTier === "BLUECHIP" ? 0.90 : 1.20)).toFixed(2));
+    // Dynamic Stop Loss and Take Profit calibrated to DEX volatility
+    let defaultTP = topPick.tokenTier === "BLUECHIP" ? 1.40 : (topPick.tokenTier === "MIDCAP" ? 1.80 : 2.20);
+    let defaultSL = topPick.tokenTier === "BLUECHIP" ? 1.40 : (topPick.tokenTier === "MIDCAP" ? 2.00 : 2.60);
+
+    let takeProfitPct = Number((aiEval.targetProfitPct ? Math.max(1.20, aiEval.targetProfitPct) : defaultTP).toFixed(2));
+    let stopLossPct = Number((aiEval.stopLossPct ? Math.max(defaultSL * 0.8, aiEval.stopLossPct) : defaultSL).toFixed(2));
     let maxHoldHours = 0.75; // 45 minutes baseline
 
     // PRE-TRADE REAL-WORLD AMM SPREAD, SLIPPAGE & LIQUIDITY PROTECTION
@@ -775,55 +780,55 @@ function runWatchdog(stateTab, marketList, mode) {
     const liveVelocityPerMin = liveData && liveData.priceChange5m > 0 ? (liveData.priceChange5m / 5) : 0.08;
     pos.etaMinutes = Math.max(1, Number((remainingGainNeeded / liveVelocityPerMin).toFixed(1)));
 
-    // RAPID BREAK-EVEN SHIELD (+0.18% Net Profit):
-    // As soon as position gains +0.18% net, instantly raise stop to entry + fees. Zero downside risk!
-    if (pos.stepLadderLevel === 0 && netPnlPct >= 0.18) {
+    // RAPID BREAK-EVEN SHIELD (+0.08% Net Profit or +$0.03):
+    // As soon as position turns green after all fees, instantly raise stop to entry + fees. Zero downside risk!
+    if (pos.stepLadderLevel === 0 && (netPnlPct >= 0.08 || netPnlUSDT >= 0.03)) {
         pos.stepLadderLevel = 1;
-        pos.stopLossPrice = pos.entryPrice * (1 + ((TOTAL_REAL_FEE_PCT + 0.03) / 100)); // Breakeven + small buffer
+        pos.stopLossPrice = pos.entryPrice * (1 + ((TOTAL_REAL_FEE_PCT + 0.02) / 100)); // Breakeven in profit!
         stateTab.recentSignals.unshift({
             time: new Date().toLocaleTimeString(),
             type: "BREAK_EVEN_SHIELD_LOCKED",
             symbol: pos.symbol,
             price: `$${pos.currentPrice.toFixed(4)}`,
-            reason: `Locked Break-Even Shield at +${netPnlPct}%. Win guaranteed against reversals.`
+            reason: `Locked Break-Even Shield at +${netPnlPct}% (+$${netPnlUSDT}). Win guaranteed against reversals.`
         });
     }
 
-    // TRANCHE 1 PROFIT HARVEST (+0.35% Net Profit):
-    // Bank 40% of position size into Vault, move protective stop to Entry + 0.15% net profit
-    if (pos.scaleLevel === 0 && netPnlPct >= 0.35) {
+    // TRANCHE 1 PROFIT HARVEST (+0.25% Net Profit or +$0.10):
+    // Bank 40% of position size into Vault, move protective stop to Entry + 0.10% net profit floor
+    if (pos.scaleLevel === 0 && (netPnlPct >= 0.25 || netPnlUSDT >= 0.10)) {
         const harvestedAmountUSD = Number(((pos.sizeUSDT * 0.40) * (netPnlPct / 100)).toFixed(3));
         pos.bookedProfitsUSDT = Number((pos.bookedProfitsUSDT + harvestedAmountUSD).toFixed(3));
         pos.remainingSizeUSDT = Number((pos.sizeUSDT * 0.60).toFixed(2));
         pos.scaleLevel = 1;
         pos.stepLadderLevel = 1;
-        pos.stopLossPrice = pos.entryPrice * (1 + ((0.15 + TOTAL_REAL_FEE_PCT) / 100)); // In-profit protective stop
+        pos.stopLossPrice = pos.entryPrice * (1 + ((0.10 + TOTAL_REAL_FEE_PCT) / 100)); // In-profit protective stop
 
         stateTab.recentSignals.unshift({
             time: new Date().toLocaleTimeString(),
             type: "TRANCHE_1_PROFIT_HARVEST",
             symbol: pos.symbol,
             price: `$${pos.currentPrice.toFixed(4)}`,
-            reason: `Locked Tranche 1 profit (+${netPnlPct}%, +$${harvestedAmountUSD}). Stop moved to +0.15% profit.`
+            reason: `Locked Tranche 1 profit (+${netPnlPct}%, +$${harvestedAmountUSD}). Stop moved to +0.10% profit.`
         });
     }
 
-    // TRANCHE 2 PROFIT HARVEST (+0.80% Net Profit):
-    // Bank another 30% of position into Vault, raise stop to +0.40% net
-    if (pos.scaleLevel <= 1 && netPnlPct >= 0.80) {
+    // TRANCHE 2 PROFIT HARVEST (+0.65% Net Profit):
+    // Bank another 30% of position into Vault, raise stop to +0.30% net
+    if (pos.scaleLevel <= 1 && netPnlPct >= 0.65) {
         const harvestedAmountUSD = Number(((pos.sizeUSDT * 0.30) * (netPnlPct / 100)).toFixed(3));
         pos.bookedProfitsUSDT = Number((pos.bookedProfitsUSDT + harvestedAmountUSD).toFixed(3));
         pos.remainingSizeUSDT = Number((pos.sizeUSDT * 0.30).toFixed(2));
         pos.scaleLevel = 2;
         pos.stepLadderLevel = 2;
-        pos.stopLossPrice = pos.entryPrice * (1 + ((0.40 + TOTAL_REAL_FEE_PCT) / 100)); // Solid floor stop
+        pos.stopLossPrice = pos.entryPrice * (1 + ((0.30 + TOTAL_REAL_FEE_PCT) / 100)); // Solid floor stop
 
         stateTab.recentSignals.unshift({
             time: new Date().toLocaleTimeString(),
             type: "TRANCHE_2_PROFIT_HARVEST",
             symbol: pos.symbol,
             price: `$${pos.currentPrice.toFixed(4)}`,
-            reason: `Locked Tranche 2 profit (+${netPnlPct}%, +$${harvestedAmountUSD}). Stop raised to +0.40%.`
+            reason: `Locked Tranche 2 profit (+${netPnlPct}%, +$${harvestedAmountUSD}). Stop raised to +0.30%.`
         });
     }
 
@@ -831,7 +836,7 @@ function runWatchdog(stateTab, marketList, mode) {
     const maxHoldMins = (pos.maxHoldHours || 0.75) * 60;
     let analysisNote = `Target: +${pos.targetTakeProfitPct}% | Dynamic ETA: ~${pos.etaMinutes}m | Open: ${minutesOpen.toFixed(0)}m / ${maxHoldMins.toFixed(0)}m`;
     if (pos.scaleLevel === 1) analysisNote = `💰 Tranche 1 Banked (+$${pos.bookedProfitsUSDT}). Trailing floor locked at break-even.`;
-    if (pos.scaleLevel === 2) analysisNote = `💎 Tranche 2 Banked (+$${pos.bookedProfitsUSDT}). Floor at +0.40%. Riding runner.`;
+    if (pos.scaleLevel === 2) analysisNote = `💎 Tranche 2 Banked (+$${pos.bookedProfitsUSDT}). Floor at +0.30%. Riding runner.`;
 
     if (liveData) {
         if (liveData.buyPressureRatio < 40) {
@@ -844,10 +849,10 @@ function runWatchdog(stateTab, marketList, mode) {
         }
     }
 
-    // POST-1-HOUR IMMEDIATE GREEN HARVEST RULE:
-    // If a trade has been held for over 60 minutes and turns green (even +$0.03 or +$0.04), lock it in and exit immediately!
-    if (minutesOpen >= 60 && (netPnlUSDT >= 0.03 || netPnlPct >= 0.15)) {
-        closeTabPosition(stateTab, mode, "POST_1HR_GREEN_HARVEST", `Booked green profit (+${netPnlPct}%, +$${netPnlUSDT}) after ${minutesOpen.toFixed(0)}m hold.`);
+    // DURATION-BASED IMMEDIATE GREEN HARVEST:
+    // If trade has been open for >= 25 minutes and is in net profit (+0.08% or +$0.03), bank it immediately and free capital!
+    if (minutesOpen >= 25 && (netPnlUSDT >= 0.03 || netPnlPct >= 0.08)) {
+        closeTabPosition(stateTab, mode, "GREEN_PROFIT_HARVEST", `Booked green profit (+${netPnlPct}%, +$${netPnlUSDT}) after ${minutesOpen.toFixed(0)}m hold.`);
         return;
     }
 
@@ -866,7 +871,7 @@ function runWatchdog(stateTab, marketList, mode) {
             return;
         } else {
             // Position is in negative: BREAK-EVEN GATE ACTIVATED.
-            // Never force exit at -0.2% or -0.4%. Wait for bounce back to green/break-even or genuine -1.2% stop loss.
+            // Never force exit at -0.2% or -0.4%. Wait for bounce back to green/break-even or genuine stop loss.
             analysisNote = `🛡️ Break-Even Gate Active: Held ${minutesOpen.toFixed(0)}m at ${netPnlPct}%. Holding for green rebound / break-even.`;
         }
     }
@@ -879,7 +884,7 @@ function runWatchdog(stateTab, marketList, mode) {
         lastAnalysisNote: analysisNote
     };
 
-    // 1. Full Take Profit Hit (+1.5% to +1.8%)
+    // 1. Full Take Profit Hit (+1.4% to +2.2%)
     if (pos.currentPrice >= pos.takeProfitPrice || netPnlPct >= pos.targetTakeProfitPct) {
         closeTabPosition(stateTab, mode, "TAKE_PROFIT", `Dynamic Target Reached (+${netPnlPct}%)! Locked into vault.`);
         return;
@@ -891,15 +896,15 @@ function runWatchdog(stateTab, marketList, mode) {
         return;
     }
 
-    // 3. Dynamic Stop Loss (1.20% max loss — gives room against noise while capping downside)
-    if (pos.currentPrice <= pos.stopLossPrice || netPnlPct <= -pos.targetStopLossPct) {
-        closeTabPosition(stateTab, mode, "DYNAMIC_STOP_LOSS", `Stop Loss hit at ${netPnlPct}% ($${pos.currentPrice.toFixed(4)}). Capital shielded immediately.`);
+    // 3. Dynamic Stop Loss (Strictly evaluated on token price against chart support level)
+    if (pos.currentPrice <= pos.stopLossPrice) {
+        closeTabPosition(stateTab, mode, "DYNAMIC_STOP_LOSS", `Stop Loss hit at $${pos.currentPrice.toFixed(4)} (Support: $${pos.stopLossPrice.toFixed(4)}, Net: ${netPnlPct}%). Capital shielded immediately.`);
         return;
     }
 
-    // 4. Extreme disaster shield
-    if (netPnlPct <= -1.8) {
-        closeTabPosition(stateTab, mode, "CATASTROPHIC_SHIELD", `Safety emergency cut at ${netPnlPct}%.`);
+    // 4. Extreme disaster safety cut (only if raw price drops more than -3.5%)
+    if (rawPnlPct <= -3.5) {
+        closeTabPosition(stateTab, mode, "CATASTROPHIC_SHIELD", `Safety emergency cut at ${rawPnlPct.toFixed(2)}% raw price drop.`);
         return;
     }
 }
