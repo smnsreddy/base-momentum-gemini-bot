@@ -481,7 +481,7 @@ Return strictly valid JSON in this format:
 
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 6000); // 6s timeout max
+        const timeout = setTimeout(() => controller.abort(), 12000); // 12s timeout max
 
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`, {
             method: 'POST',
