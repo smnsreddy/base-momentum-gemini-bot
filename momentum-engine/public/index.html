@@ -3,65 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Autonomous Momentum & Regime Engine • Base Mainnet</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Autonomous Momentum & Regime Engine - Base Mainnet</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #090d16;
+            --bg-base: #0a0e17;
             --surface: #111827;
-            --surface-elevated: #1e293b;
-            --border: rgba(148, 163, 184, 0.12);
-            --accent-green: #10b981;
-            --accent-blue: #38bdf8;
-            --accent-purple: #a855f7;
-            --accent-yellow: #fbbf24;
-            --accent-red: #f43f5e;
+            --surface-hover: #1f2937;
+            --border: #1e293b;
+            --primary: #38bdf8;
+            --success: #34d399;
+            --danger: #f43f5e;
+            --warning: #fbbf24;
             --text-main: #f8fafc;
-            --text-secondary: #94a3b8;
-            --text-dim: #64748b;
+            --text-dim: #94a3b8;
+            --text-secondary: #64748b;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            background: var(--bg);
+            background-color: var(--bg-base);
             color: var(--text-main);
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-family: 'Inter', sans-serif;
             padding: 24px;
-            max-width: 1400px;
-            margin: 0 auto;
+            font-size: 14px;
         }
 
         .mono { font-family: 'JetBrains Mono', monospace; }
-
-        /* Header */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 18px 24px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 20px;
             margin-bottom: 20px;
         }
 
-        .pulse-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--accent-green);
+        /* Mode Tabs */
+        .tab-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            background: rgba(17, 24, 39, 0.8);
+            padding: 6px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            width: fit-content;
+        }
+
+        .tab-btn {
+            background: transparent;
+            color: var(--text-dim);
+            border: none;
+            padding: 10px 22px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(56, 189, 248, 0.3);
+        }
+
+        .tab-btn.real-active {
+            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+            color: #fff;
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+        }
+
+        .slider-panel {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(56, 189, 248, 0.28);
+            border-radius: 14px;
+            padding: 16px 22px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .slider-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .slider-track {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 4px;
+            background: #1e293b;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .slider-track::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
-            display: inline-block;
-            box-shadow: 0 0 10px var(--accent-green);
-            animation: pulse 2s infinite;
+            background: #38bdf8;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.7);
+            transition: transform 0.1s ease;
         }
 
-        @keyframes pulse {
-            0% { transform: scale(0.95); opacity: 0.8; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(0.95); opacity: 0.8; }
+        .slider-track::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
         }
 
-        /* KPI Cards */
+        .slider-flash::-webkit-slider-thumb {
+            background: #a855f7;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.7);
+        }
+
         .kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -74,19 +148,18 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 18px 20px;
-            position: relative;
         }
 
         .kpi-title {
             font-size: 0.75rem;
             color: var(--text-dim);
             text-transform: uppercase;
-            font-weight: 700;
             letter-spacing: 0.05em;
+            font-weight: 700;
         }
 
         .kpi-val {
-            font-size: 1.5rem;
+            font-size: 1.55rem;
             font-weight: 800;
             margin-top: 6px;
             font-family: 'JetBrains Mono', monospace;
@@ -98,7 +171,6 @@
             margin-top: 4px;
         }
 
-        /* Active Position Banner */
         .position-box {
             background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(56, 189, 248, 0.05) 100%);
             border: 1px solid rgba(16, 185, 129, 0.35);
@@ -117,7 +189,6 @@
             margin-bottom: 24px;
         }
 
-        /* Table */
         .table-box {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -136,54 +207,56 @@
             gap: 8px;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-
+        table { width: 100%; border-collapse: collapse; }
         th {
             text-align: left;
-            color: var(--text-dim);
             font-size: 0.72rem;
+            color: var(--text-dim);
             text-transform: uppercase;
+            letter-spacing: 0.05em;
             padding: 10px 14px;
             border-bottom: 1px solid var(--border);
         }
-
         td {
             padding: 12px 14px;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.06);
+            border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+            font-size: 0.85rem;
         }
+        tbody tr:hover { background-color: var(--surface-hover); }
 
         .badge {
+            display: inline-block;
             padding: 3px 8px;
             border-radius: 6px;
             font-size: 0.72rem;
             font-weight: 700;
         }
-
-        .badge-green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
         .badge-blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+        .badge-green { background: rgba(52, 211, 153, 0.15); color: #34d399; }
         .badge-yellow { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+        .badge-purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
+        .badge-red { background: rgba(244, 63, 94, 0.15); color: #f43f5e; }
 
-        /* History Log */
-        .log-box {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 20px;
-            max-height: 260px;
-            overflow-y: auto;
+        .pulse-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #34d399;
+            box-shadow: 0 0 10px #34d399;
+            display: inline-block;
         }
 
-        .log-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(148, 163, 184, 0.06);
-            font-size: 0.82rem;
+        .btn-trade {
+            background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+            color: #fff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
         }
+        .btn-trade:hover { filter: brightness(1.15); }
     </style>
 </head>
 <body>
@@ -193,21 +266,69 @@
         <div>
             <h1 style="font-size: 1.3rem; font-weight: 800;">Autonomous Momentum & Regime Engine</h1>
             <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 2px;">
-                Base Mainnet High-Turnover DEX Universe • Dynamic Multi-Regime Brain • Zero-Risk Capital Shield
+                50+ High-Turnover Base DEX Universe • Pre-Breakout Order-Book Radar • Fast Velocity Brain
             </p>
         </div>
         <div style="display: flex; align-items: center; gap: 12px;">
             <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; background: rgba(56, 189, 248, 0.12); color: #38bdf8; padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(56, 189, 248, 0.25);">
                 <span>🦊</span>
-                <span class="mono" id="walletAddrBadge">0x98bc...B9F7 (0.00459 ETH)</span>
+                <span class="mono" id="walletAddrBadge">Loading wallet...</span>
             </div>
-            <button id="btnSweepProfit" onclick="sweepProfit()" style="display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 10px rgba(16,185,129,0.3);">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; background: rgba(52, 211, 153, 0.12); color: #34d399; padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(52, 211, 153, 0.25);">
+                <span>💵</span>
+                <span class="mono" id="usdcBalanceBadge">$0.00 USDC</span>
+            </div>
+            <button id="btnSweepProfit" onclick="sweepProfit()" style="display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.2s;">
                 <span>💰</span>
-                <span>SWEEP PROFIT TO WALLET</span>
+                <span>SWEEP PROFIT</span>
             </button>
-            <div id="modeStatusBadge" style="display: flex; align-items: center; gap: 8px; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 6px 14px; border-radius: 9999px; font-size: 0.8rem; font-weight: 800;">
+            <div id="modeStatusBadge" style="display: flex; align-items: center; gap: 8px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 6px 14px; border-radius: 9999px; font-size: 0.8rem; font-weight: 800;">
                 <span class="pulse-dot"></span>
-                <span>⚡ LIVE ON-CHAIN TRADING</span>
+                <span id="activeModeText">PAPER TRADING</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dual Mode Tabs -->
+    <div class="tab-bar">
+        <button class="tab-btn active" id="tabPaperBtn" onclick="switchTab('paper')">
+            <span>💻</span>
+            <span>PAPER TRADING (VIRTUAL HARDDISK)</span>
+        </button>
+        <button class="tab-btn" id="tabRealBtn" onclick="switchTab('real')">
+            <span>⚡</span>
+            <span>REAL ON-CHAIN TRADING (DEX ROUTERS)</span>
+        </button>
+    </div>
+
+    <!-- Real-Market Capital Simulator (Paper Mode) -->
+    <div id="paperSlidersBox" class="slider-panel">
+        <div class="slider-item">
+            <div class="slider-header">
+                <span style="color: #38bdf8;">💵 Real-World Capital Simulator:</span>
+                <div>
+                    <span id="sliderCapitalVal" class="mono" style="color: #38bdf8; font-size: 1.05rem; font-weight: 800;">$10.00</span>
+                    <span id="sliderCapitalInr" class="mono" style="color: var(--text-dim); font-size: 0.8rem; margin-left: 6px;">₹840.00</span>
+                </div>
+            </div>
+            <input type="range" class="slider-track" id="capitalRangeInput" min="5" max="1000" step="5" value="10" oninput="onCapitalSliderInput(this.value)" onchange="onCapitalSliderChange(this.value)">
+            <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-dim);">
+                <span>$5 (Min)</span>
+                <span>$250</span>
+                <span>$500</span>
+                <span>$1,000 (Max)</span>
+            </div>
+        </div>
+
+        <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 10px; padding: 12px 16px;">
+            <div style="font-size: 0.75rem; color: #34d399; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                <span>🛡️</span>
+                <span>REAL-MARKET ON-CHAIN EXECUTION MODEL</span>
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.45;">
+                <div>• <strong>Base DEX Pool Fee:</strong> 0.05% - 0.30% exact round-trip deducted</div>
+                <div>• <strong>Base L2 Gas:</strong> ~$0.012 on-chain execution cost accounted for</div>
+                <div>• <strong>AMM Slippage Engine:</strong> Crossed spread + pool liquidity depth protected</div>
             </div>
         </div>
     </div>
@@ -215,17 +336,17 @@
     <!-- KPI Grid -->
     <div class="kpi-grid">
         <div class="kpi-card">
-            <div class="kpi-title">Trading Capital</div>
+            <div class="kpi-title" id="capitalTitle">Trading Capital</div>
             <div class="kpi-val" id="capitalVal">$10.00</div>
-            <div class="kpi-sub" id="capitalInr">₹840.00 • Protected Base</div>
+            <div class="kpi-sub" id="capitalInr">Virtual Protected Base</div>
         </div>
         <div class="kpi-card" style="border: 1px solid rgba(16, 185, 129, 0.4); background: linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, rgba(17, 24, 39, 1) 100%);">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div class="kpi-title">Withdrawable Net Profit</div>
-                <span id="sweepStatusBadge" style="font-size: 0.65rem; background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 6px; border-radius: 4px; font-weight: 700;">AUTO-ISOLATED</span>
+                <div class="kpi-title">Net Profit Harvested</div>
+                <span id="sweepStatusBadge" style="font-size: 0.65rem; background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 6px; border-radius: 4px; font-weight: 700;">ISOLATED</span>
             </div>
             <div class="kpi-val" style="color: #34d399;" id="profitVal">+$0.00</div>
-            <div class="kpi-sub" style="color: #34d399;" id="profitInr">+₹0.00 Locked in Vault</div>
+            <div class="kpi-sub" style="color: #34d399;" id="profitInr">Locked in Vault</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">Win Rate & Discipline</div>
@@ -233,92 +354,97 @@
             <div class="kpi-sub" id="winRateSub">0 Trades (Cut losses early, let wins run)</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-title">Dynamic Risk Shield</div>
-            <div class="kpi-val" style="color: #fbbf24;">ADAPTIVE</div>
-            <div class="kpi-sub" style="color: #34d399;">Dynamic Targets & Watchdog Active</div>
+            <div class="kpi-title">Discipline Shield</div>
+            <div class="kpi-val" style="color: #34d399;">TRANCHE SCALPER</div>
+            <div class="kpi-sub" style="color: #38bdf8;">Multi-Lock • 45m Hold (+15m Ext)</div>
         </div>
     </div>
 
     <!-- Active Trade Section -->
     <div id="positionContainer">
         <div class="no-position">
-            <div style="font-size: 1.1rem; font-weight: 700; color: #fff;">🔍 Omni-Market Scanner Active</div>
-            <div style="font-size: 0.82rem; margin-top: 4px;">Scanning 25+ liquid Base pairs dynamically. Evaluating Breakouts, Channel Scalps & Pullbacks. Capital 100% shielded.</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: #fff;">🔍 Market Scanner Active</div>
+            <div style="font-size: 0.82rem; margin-top: 4px;">Evaluating Base pairs dynamically across Breakout, Channel Scalp & Pullbacks. Capital 100% shielded.</div>
         </div>
     </div>
 
-    <!-- Predictive AI Watchdog & Early-Kill Telemetry Card -->
-    <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 14px; padding: 18px 22px; margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+    <!-- Predictive AI Watchdog Telemetry -->
+    <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 14px; padding: 18px 22px; margin-bottom: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <div style="display: flex; align-items: center; gap: 8px;">
                 <span class="pulse-dot" style="background: #a855f7; box-shadow: 0 0 10px #a855f7;"></span>
-                <span style="font-size: 0.85rem; font-weight: 800; color: #c084fc; text-transform: uppercase;">🧠 Background Predictive AI Watchdog (Early Reversal Detector)</span>
+                <span style="font-size: 0.85rem; font-weight: 800; color: #c084fc; text-transform: uppercase;">🧠 Gemini AI Quantitative Risk & Opportunity Engine (Gemini 3.5 Flash Active)</span>
             </div>
             <div style="font-size: 0.72rem; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); padding: 3px 10px; border-radius: 6px; font-weight: 700;" id="watchdogStatusBadge">
                 STATUS: IDLE
             </div>
         </div>
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; align-items: center;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; margin-top: 10px;">
             <div>
-                <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">Real-Time Market Predictive Analysis</div>
-                <div style="font-size: 0.88rem; color: #fff; font-weight: 600; margin-top: 4px;" id="watchdogAnalysisNote">
-                    Scanning 25+ Base pairs for statistical edge...
+                <div style="font-size: 0.72rem; color: var(--text-dim);">Real-Time Market Predictive Analysis</div>
+                <div style="font-size: 0.88rem; font-weight: 600; color: #e2e8f0; margin-top: 4px;" id="watchdogAnalysisNote">
+                    Scanning Base pairs for statistical edge...
                 </div>
             </div>
             <div>
-                <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">Reversal Risk Factor</div>
-                <div class="mono" style="font-size: 1.2rem; font-weight: 800; color: #34d399; margin-top: 4px;" id="reversalRiskVal">
-                    0% (Low Risk)
+                <div style="font-size: 0.72rem; color: var(--text-dim);">Reversal Risk Factor</div>
+                <div style="font-size: 0.95rem; font-weight: 800; color: #34d399; margin-top: 4px;" id="reversalRiskVal">
+                    0% (SAFE)
                 </div>
             </div>
             <div>
-                <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">AI Recommendation</div>
-                <div class="mono" style="font-size: 0.95rem; font-weight: 800; color: #38bdf8; margin-top: 4px;" id="aiRecommendationVal">
-                    SEARCHING_OMNI_MARKET
+                <div style="font-size: 0.72rem; color: var(--text-dim);">AI Recommendation</div>
+                <div style="font-size: 0.95rem; font-weight: 800; color: #38bdf8; margin-top: 4px;" id="aiRecommendationVal">
+                    SCANNING
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Live Scanner Matrix -->
+    <!-- Live Base Multi-Asset Regime Radar Table -->
     <div class="table-box">
         <div class="section-title">
-            <span>⚡ Live Base Multi-Asset Regime Radar (High-Frequency 1.2s • Block Event Stream)</span>
+            <span>⚡</span>
+            <span>Live Base Multi-Asset Regime Radar (High-Frequency Direct Stream)</span>
         </div>
         <table>
             <thead>
                 <tr>
                     <th>Asset</th>
+                    <th>Tier</th>
                     <th>DEX</th>
                     <th>Current Price</th>
                     <th>5m Velocity</th>
+                    <th>5m Tape</th>
                     <th>1h Trend</th>
                     <th>1h Volume</th>
-                    <th>Buy Pressure</th>
-                    <th>Momentum Score</th>
-                    <th>Market Regime</th>
+                    <th>1h Buys</th>
+                    <th>Score</th>
+                    <th>Regime</th>
                     <th>Action</th>
                 </tr>
             </thead>
-            <tbody id="scannerTbody">
-                <tr><td colspan="10" style="text-align: center; color: var(--text-dim); padding: 20px;">Connecting to Base DEX Radar...</td></tr>
+            <tbody id="radarTableBody">
+                <tr><td colspan="12" style="text-align: center; color: var(--text-dim); padding: 20px;">Scanning Base DEX liquidity pools...</td></tr>
             </tbody>
         </table>
     </div>
 
-    <!-- Trade History & Telemetry Log -->
+    <!-- Trade History -->
     <div class="table-box">
         <div class="section-title">
-            <span>📋 Autonomous Execution & Profit Harvest History</span>
+            <span>📋</span>
+            <span id="historySectionTitle">Execution & Profit Harvest History (Paper Mode)</span>
         </div>
-        <div class="log-box" id="historyBox">
-            <div style="text-align: center; color: var(--text-dim); padding: 30px;">
-                No trades closed yet. Bot will exit automatically on +3.0% take profit or -1.5% stop-loss.
+        <div id="historyContainer">
+            <div style="text-align: center; color: var(--text-dim); padding: 20px;">
+                No trades closed yet in this tab.
             </div>
         </div>
     </div>
 
     <script>
+        let currentTab = "paper";
         const ws = new WebSocket(`ws://${window.location.host}`);
 
         ws.onmessage = (e) => {
@@ -326,74 +452,173 @@
             if (msg.type === 'UPDATE') render(msg.data);
         };
 
-        function render(state) {
-            // KPIs
-            document.getElementById('capitalVal').innerText = `$${state.capital.currentUSDT.toFixed(2)}`;
-            document.getElementById('capitalInr').innerText = `₹${state.capital.currentINR.toFixed(2)} • Protected Base`;
-            document.getElementById('profitVal').innerText = `+$${state.capital.withdrawableProfitUSDT.toFixed(2)}`;
-            document.getElementById('profitInr').innerText = `+₹${state.capital.withdrawableProfitINR.toFixed(2)} Locked in Vault`;
-            document.getElementById('winRateVal').innerText = `${state.stats.winRatePct}%`;
-            document.getElementById('winRateSub').innerText = `${state.stats.winningTrades}W - ${state.stats.losingTrades}L (${state.stats.totalTrades} Total Trades)`;
+        async function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tabPaperBtn').className = `tab-btn ${tab === 'paper' ? 'active' : ''}`;
+            document.getElementById('tabRealBtn').className = `tab-btn ${tab === 'real' ? 'real-active' : ''}`;
+            await fetch('/api/set-tab', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tab })
+            });
+        }
 
-            // Sweep Button State
-            const sweepBtn = document.getElementById('btnSweepProfit');
-            if (sweepBtn) {
-                if (state.capital.withdrawableProfitUSDT > 0) {
-                    sweepBtn.innerHTML = `<span>💰</span><span>SWEEP +$${state.capital.withdrawableProfitUSDT.toFixed(2)} TO WALLET</span>`;
-                    sweepBtn.style.background = 'linear-gradient(135deg, #059669 0%, #10b981 100%)';
-                    sweepBtn.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.5)';
-                    sweepBtn.style.cursor = 'pointer';
-                } else {
-                    sweepBtn.innerHTML = `<span>🔒</span><span>$10.00 BASE PROTECTED ($0 PROFIT)</span>`;
-                    sweepBtn.style.background = 'rgba(51, 65, 85, 0.8)';
-                    sweepBtn.style.boxShadow = 'none';
-                    sweepBtn.style.cursor = 'default';
+        async function tradePair(symbol) {
+            const res = await fetch('/api/trade-pair', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol })
+            });
+            const data = await res.json();
+            alert(data.message);
+        }
+
+        async function closePositionManual() {
+            const res = await fetch('/api/close-position', { method: 'POST' });
+            const data = await res.json();
+            alert(data.message);
+        }
+
+        async function sweepProfit() {
+            const res = await fetch('/api/sweep-profit', { method: 'POST' });
+            const data = await res.json();
+            alert(data.message);
+        }
+
+        let isDraggingCapital = false;
+
+        function onCapitalSliderInput(val) {
+            isDraggingCapital = true;
+            const num = parseFloat(val);
+            document.getElementById('sliderCapitalVal').innerText = `$${num.toFixed(2)}`;
+            document.getElementById('sliderCapitalInr').innerText = `₹${(num * 84).toFixed(2)}`;
+        }
+
+        async function onCapitalSliderChange(val) {
+            isDraggingCapital = false;
+            const num = parseFloat(val);
+            try {
+                await fetch('/api/set-virtual-capital', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: num })
+                });
+            } catch (e) {
+                console.error("Failed to update virtual capital", e);
+            }
+        }
+
+        function render(state) {
+            currentTab = state.activeTab || currentTab;
+            const tabState = state[currentTab] || state.paper;
+
+            // Sliders panel visibility & sync
+            const slidersBox = document.getElementById('paperSlidersBox');
+            if (slidersBox) {
+                slidersBox.style.display = currentTab === 'paper' ? 'grid' : 'none';
+            }
+
+            if (currentTab === 'paper' && tabState.capital) {
+                if (!isDraggingCapital) {
+                    const capVal = tabState.capital.initialUSDT || 10;
+                    document.getElementById('capitalRangeInput').value = capVal;
+                    document.getElementById('sliderCapitalVal').innerText = `$${capVal.toFixed(2)}`;
+                    document.getElementById('sliderCapitalInr').innerText = `₹${(capVal * 84).toFixed(2)}`;
                 }
             }
 
-            // Active Position Card
+            // Header info
+            const walletBadge = document.getElementById('walletAddrBadge');
+            if (walletBadge && state.walletAddress) {
+                const shortAddr = `${state.walletAddress.substring(0, 6)}...${state.walletAddress.substring(state.walletAddress.length - 4)}`;
+                walletBadge.innerText = `${shortAddr} (Gas: ${state.liveEthBalance || '0.00 ETH'})`;
+            }
+
+            const usdcBadge = document.getElementById('usdcBalanceBadge');
+            if (usdcBadge) {
+                usdcBadge.innerText = state.liveUsdcBalance || '$0.00 USDC';
+            }
+
+            document.getElementById('activeModeText').innerText = currentTab === 'paper' ? '💻 PAPER TRADING' : '⚡ REAL ON-CHAIN TRADING';
+            const modeBadge = document.getElementById('modeStatusBadge');
+            if (currentTab === 'paper') {
+                modeBadge.style.background = 'rgba(56, 189, 248, 0.15)';
+                modeBadge.style.color = '#38bdf8';
+                modeBadge.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+            } else {
+                modeBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+                modeBadge.style.color = '#34d399';
+                modeBadge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+            }
+
+            // KPIs
+            if (currentTab === 'paper') {
+                document.getElementById('capitalTitle').innerText = 'Virtual Trading Capital';
+                document.getElementById('capitalVal').innerText = `$${tabState.capital.currentUSDT.toFixed(2)}`;
+                document.getElementById('capitalInr').innerText = `₹${tabState.capital.currentINR.toFixed(2)} • Harddisk Virtual`;
+                document.getElementById('profitVal').innerText = `+$${tabState.capital.withdrawableProfitUSDT.toFixed(2)}`;
+                document.getElementById('profitInr').innerText = `+₹${tabState.capital.withdrawableProfitINR.toFixed(2)} Locked in Vault`;
+            } else {
+                document.getElementById('capitalTitle').innerText = 'Live Trading Capital';
+                document.getElementById('capitalVal').innerText = state.liveUsdcBalance || '$0.00 USDC';
+                document.getElementById('capitalInr').innerText = `Gas Reserve: ${state.liveEthBalance}`;
+                document.getElementById('profitVal').innerText = `+$${tabState.stats.totalNetProfitUSDT.toFixed(2)}`;
+                document.getElementById('profitInr').innerText = 'On-Chain Settled PnL';
+            }
+
+            document.getElementById('winRateVal').innerText = `${tabState.stats.winRatePct}%`;
+            document.getElementById('winRateSub').innerText = `${tabState.stats.winningTrades}W - ${tabState.stats.losingTrades}L (${tabState.stats.totalTrades} Total Trades)`;
+
+            // Active Position
             const posBox = document.getElementById('positionContainer');
-            if (state.activePosition) {
-                const pos = state.activePosition;
+            if (tabState.activePosition) {
+                const pos = tabState.activePosition;
                 const pnlColor = pos.pnlPct >= 0 ? '#34d399' : '#f43f5e';
-                const targetPct = pos.targetTakeProfitPct || 3.0;
+                const targetPct = pos.targetTakeProfitPct || 2.5;
                 const stopPct = pos.targetStopLossPct || 1.5;
-                const eta = pos.etaMinutes !== undefined ? `${pos.etaMinutes} min` : 'Calculating...';
 
                 posBox.innerHTML = `
                     <div class="position-box">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                                 <span class="pulse-dot"></span>
-                                <span style="font-weight: 800; font-size: 1.1rem; color: #fff;">ACTIVE POSITION: ${pos.symbol}</span>
+                                <span style="font-weight: 800; font-size: 1.1rem; color: #fff;">ACTIVE POSITION [${pos.mode.toUpperCase()}]: ${pos.symbol}</span>
+                                <span class="badge ${pos.tokenTier === 'BLUECHIP' ? 'badge-blue' : (pos.tokenTier === 'MIDCAP' ? 'badge-purple' : 'badge-yellow')}">${pos.tokenTier}</span>
                                 <span class="badge badge-blue">${pos.dex}</span>
                                 <span class="badge badge-yellow">${pos.strategy}</span>
-                                ${pos.stepLadderLevel === 1 ? '<span class="badge badge-blue">🛡️ BREAK-EVEN LOCKED (0% RISK)</span>' : ''}
-                                ${pos.stepLadderLevel === 2 ? '<span class="badge badge-green">💰 STEP-LADDER LOCKED (+1.0% WIN)</span>' : ''}
+                                ${pos.scaleLevel >= 1 ? `<span class="badge badge-green">💰 TRANCHE 1 BANKED (+$${pos.bookedProfitsUSDT || '0.02'})</span>` : ''}
+                                ${pos.scaleLevel >= 2 ? '<span class="badge badge-green">💎 TRANCHE 2 BANKED</span>' : ''}
+                                ${pos.stepLadderLevel === 1 ? '<span class="badge badge-blue">🛡️ BREAK-EVEN LOCKED</span>' : ''}
+                                ${pos.stepLadderLevel === 2 ? '<span class="badge badge-green">💰 STEP-LADDER LOCKED (+1.0%)</span>' : ''}
                             </div>
                             <div style="text-align: right;">
                                 <div class="mono" style="font-size: 1.4rem; font-weight: 800; color: ${pnlColor};">
-                                    ${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct}% (${pos.pnlUSDT >= 0 ? '+' : ''}$${pos.pnlUSDT})
+                                    ${pos.pnlPct > 0 ? '+' : ''}${pos.pnlPct}% (${pos.pnlUSDT > 0 ? '+' : ''}$${pos.pnlUSDT})
                                 </div>
-                                <div style="font-size: 0.75rem; color: #38bdf8; font-weight: 600;">
-                                    ⏱️ Est. Target Reach: ~${eta}
+                                <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 2px;">
+                                    ⏱️ Est. Target Reach: ~${pos.etaMinutes || 15} min
                                 </div>
                             </div>
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; font-size: 0.85rem;">
                             <div><span style="color: var(--text-dim);">Entry Price:</span> <strong class="mono">$${pos.entryPrice.toFixed(4)}</strong></div>
                             <div><span style="color: var(--text-dim);">Live Price:</span> <strong class="mono">$${pos.currentPrice.toFixed(4)}</strong></div>
-                            <div><span style="color: var(--text-dim);">Dynamic Stop Loss:</span> <strong class="mono" style="color: #f43f5e;">$${pos.stopLossPrice.toFixed(4)} (-${stopPct}%)</strong></div>
+                            <div><span style="color: var(--text-dim);">Dynamic Stop Loss:</span> <strong class="mono" style="color: ${pos.stopLossPrice >= pos.entryPrice ? '#34d399' : '#f43f5e'};">$${pos.stopLossPrice.toFixed(4)} ${pos.stopLossPrice >= pos.entryPrice ? '(IN PROFIT)' : `(-${stopPct}%)`}</strong></div>
                             <div><span style="color: var(--text-dim);">Dynamic Target:</span> <strong class="mono" style="color: #34d399;">$${pos.takeProfitPrice.toFixed(4)} (+${targetPct}%)</strong></div>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.12);">
                             <div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary);">${pos.reason}</div>
-                                <div style="font-size: 0.75rem; color: #34d399; font-weight: 700; margin-top: 2px;">🎯 Target: +${targetPct}% | 🛡️ Max Risk: -${stopPct}%</div>
+                                <div style="font-size: 0.75rem; color: #38bdf8; font-weight: 700;">
+                                    ⚡ AI Dynamic Sizing: $${pos.sizeUSDT ? pos.sizeUSDT.toFixed(2) : '10.00'} (${pos.sizingTier || 'BASE_CAPITAL_SHIELD'}) • 5m Buys: ${pos.buyRatio5m || 60}% • 1h Buys: ${pos.buyRatio1h || 55}%
+                                </div>
+                                <div style="font-size: 0.75rem; color: #34d399; font-weight: 700; margin-top: 2px;">
+                                    🏦 Multi-Tranche: $${pos.remainingSizeUSDT || pos.sizeUSDT} remaining in trade • +$${pos.bookedProfitsUSDT || '0.00'} locked into vault
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">${pos.reason}</div>
+                                ${pos.realTxHash ? `<div style="font-size: 0.75rem; margin-top: 4px;"><a href="https://basescan.org/tx/${pos.realTxHash}" target="_blank" style="color: #38bdf8; text-decoration: none; font-weight: 700;">🔗 View On-Chain Swap (Basescan)</a></div>` : ''}
                             </div>
-                            <button id="btnManualClose" onclick="closePositionManual()" style="display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%); color: #fff; border: none; padding: 7px 16px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 10px rgba(244,63,94,0.3);">
-                                <span>🛑</span>
-                                <span>STOP TRADE & LOCK PROFIT</span>
+                            <button onclick="closePositionManual()" style="background: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%); color: #fff; border: none; padding: 7px 16px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; cursor: pointer;">
+                                🛑 STOP TRADE & EXIT
                             </button>
                         </div>
                     </div>
@@ -401,159 +626,72 @@
             } else {
                 posBox.innerHTML = `
                     <div class="no-position">
-                        <div style="font-size: 1.1rem; font-weight: 700; color: #fff;">🔍 Market Scanner Active (Safe Cash Mode)</div>
-                        <div style="font-size: 0.82rem; margin-top: 4px;">Evaluating Base pairs dynamically across Breakout, Channel Scalp & Trend Continuation regimes. Sitting in 100% safe cash until high-probability setup appears.</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #fff;">🔍 Multi-Timeframe Radar Scanning (${currentTab.toUpperCase()} MODE)</div>
+                        <div style="font-size: 0.82rem; margin-top: 4px;">Evaluating Base pairs across 5m velocity, 1h trend & 6h macro. Strict anti-trap shield active.</div>
                     </div>
                 `;
             }
 
-            // Predictive Watchdog Telemetry Updates
-            if (state.watchdogTelemetry) {
-                const wt = state.watchdogTelemetry;
-                const statusBadge = document.getElementById('watchdogStatusBadge');
-                if (statusBadge) statusBadge.innerText = `STATUS: ${wt.status || 'ACTIVE'}`;
-                const noteEl = document.getElementById('watchdogAnalysisNote');
-                if (noteEl) noteEl.innerText = wt.lastAnalysisNote || 'Scanning Base pairs for statistical edge...';
-                const riskEl = document.getElementById('reversalRiskVal');
-                if (riskEl) {
-                    const rRisk = wt.reversalRiskPct || 0;
-                    riskEl.innerText = `${rRisk}% (${rRisk >= 65 ? 'DANGER - KILL TRIGGER' : (rRisk >= 40 ? 'ELEVATED' : 'LOW RISK')})`;
-                    riskEl.style.color = rRisk >= 65 ? '#f43f5e' : (rRisk >= 40 ? '#fbbf24' : '#34d399');
-                }
-                const recEl = document.getElementById('aiRecommendationVal');
-                if (recEl) {
-                    recEl.innerText = wt.actionRecommendation || 'HOLD';
-                    recEl.style.color = wt.actionRecommendation === 'PREDICTIVE_KILL_RECOMMENDED' ? '#f43f5e' : '#38bdf8';
-                }
+            // Watchdog Telemetry
+            if (tabState.watchdogTelemetry) {
+                const wt = tabState.watchdogTelemetry;
+                document.getElementById('watchdogStatusBadge').innerText = `STATUS: ${wt.status || 'IDLE'}`;
+                document.getElementById('watchdogAnalysisNote').innerText = wt.lastAnalysisNote || 'Scanning market...';
+                const rVal = document.getElementById('reversalRiskVal');
+                rVal.innerText = `${wt.reversalRiskPct}%`;
+                rVal.style.color = wt.reversalRiskPct >= 65 ? '#f43f5e' : '#34d399';
+                document.getElementById('aiRecommendationVal').innerText = wt.actionRecommendation || 'HOLD';
             }
 
-            // Scanner Table
-            const tbody = document.getElementById('scannerTbody');
+            // Radar Table
+            const tbody = document.getElementById('radarTableBody');
             if (state.scannedTokens && state.scannedTokens.length > 0) {
-                tbody.innerHTML = state.scannedTokens.map(m => {
-                    const v5Color = m.priceChange5m >= 0 ? '#34d399' : '#f43f5e';
-                    const v1hColor = m.priceChange1h >= 0 ? '#34d399' : '#f43f5e';
-                    const score = m.strategyScore !== undefined ? m.strategyScore : (m.momentumScore || 0);
-                    const strategyName = m.recommendedStrategy || m.regime || 'CHOPPY';
-                    
-                    let regimeBadge = `<span class="badge badge-yellow">${strategyName}</span>`;
-                    if (strategyName === 'MOMENTUM_BREAKOUT') regimeBadge = `<span class="badge badge-green">🚀 BREAKOUT</span>`;
-                    else if (strategyName === 'MEAN_REVERSION_SCALP') regimeBadge = `<span class="badge badge-blue">🎯 CHANNEL SCALP</span>`;
-                    else if (strategyName === 'TREND_CONTINUATION') regimeBadge = `<span class="badge badge-green">📈 TREND RIDE</span>`;
+                tbody.innerHTML = state.scannedTokens.map(t => {
+                    const tierBadge = t.tokenTier === 'BLUECHIP' 
+                        ? '<span class="badge badge-blue">BLUECHIP</span>' 
+                        : (t.tokenTier === 'MIDCAP' ? '<span class="badge badge-purple">MIDCAP</span>' : '<span class="badge badge-yellow">MICROCAP</span>');
 
-                    const formattedPrice = m.currentPrice < 0.01 
-                        ? `$${m.currentPrice.toFixed(6)}` 
-                        : (m.currentPrice > 1000 ? `$${m.currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : `$${m.currentPrice.toFixed(4)}`);
-
-                    const whaleBadge = m.whaleInflow ? ' <span style="font-size:0.75rem;" title="Whale Netflow Detected">🐋</span>' : '';
-                    const washBadge = m.washManipulated ? ' <span style="font-size:0.72rem; color:#f43f5e;" title="Suspicious Wash Trading Detected">⚠️ WASH_TRAP</span>' : '';
-
-                    const tradeBtn = `<button onclick="tradePair('${m.symbol}')" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.72rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#10b981';this.style.color='#fff'" onmouseout="this.style.background='rgba(16, 185, 129, 0.15)';this.style.color='#34d399'">⚡ TRADE</button>`;
+                    const tape5m = t.buyRatio5m !== undefined ? t.buyRatio5m : t.buyPressureRatio;
+                    const tape5mColor = tape5m >= 60 ? '#34d399' : (tape5m <= 45 ? '#f43f5e' : '#38bdf8');
 
                     return `
                         <tr>
-                            <td><strong>${m.symbol}</strong>${whaleBadge}${washBadge}</td>
-                            <td>${m.dex}</td>
-                            <td class="mono">${formattedPrice}</td>
-                            <td class="mono" style="color: ${v5Color}; font-weight: 700;">${m.priceChange5m >= 0 ? '+' : ''}${m.priceChange5m}%</td>
-                            <td class="mono" style="color: ${v1hColor}; font-weight: 700;">${m.priceChange1h >= 0 ? '+' : ''}${m.priceChange1h}%</td>
-                            <td class="mono">$${m.volume1h.toLocaleString()}</td>
-                            <td class="mono">${m.buyPressureRatio}% Buys</td>
-                            <td><strong style="color: ${score >= 70 ? '#34d399' : '#38bdf8'};">${score}/100</strong></td>
-                            <td>${regimeBadge}</td>
-                            <td style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 0.72rem; color: ${m.status === 'HIGH_PROBABILITY_SETUP' ? '#34d399' : 'var(--text-dim)'}; font-weight: 700;">${m.status}</span>
-                                ${tradeBtn}
-                            </td>
+                            <td><strong>${t.symbol}</strong></td>
+                            <td>${tierBadge}</td>
+                            <td><span class="badge badge-blue">${t.dex}</span></td>
+                            <td class="mono">$${t.currentPrice < 1 ? t.currentPrice.toFixed(6) : t.currentPrice.toFixed(2)}</td>
+                            <td class="mono" style="color: ${t.priceChange5m >= 0 ? '#34d399' : '#f43f5e'};">${t.priceChange5m > 0 ? '+' : ''}${t.priceChange5m}%</td>
+                            <td><strong style="color: ${tape5mColor};">${tape5m}%</strong></td>
+                            <td class="mono" style="color: ${t.priceChange1h >= 0 ? '#34d399' : '#f43f5e'};">${t.priceChange1h > 0 ? '+' : ''}${t.priceChange1h}%</td>
+                            <td>$${t.volume1h.toLocaleString()}</td>
+                            <td>${t.buyPressureRatio}% Buys</td>
+                            <td><strong style="color: #38bdf8;">${t.strategyScore}/100</strong></td>
+                            <td><span class="badge badge-yellow">${t.recommendedStrategy}</span></td>
+                            <td><button class="btn-trade" onclick="tradePair('${t.symbol}')">⚡ TRADE</button></td>
                         </tr>
                     `;
                 }).join('');
             }
 
-            // History Box
-            const historyBox = document.getElementById('historyBox');
-            if (state.tradeHistory && state.tradeHistory.length > 0) {
-                historyBox.innerHTML = state.tradeHistory.map(h => `
-                    <div class="log-item">
+            // History
+            const histBox = document.getElementById('historyContainer');
+            if (tabState.tradeHistory && tabState.tradeHistory.length > 0) {
+                histBox.innerHTML = tabState.tradeHistory.map(h => `
+                    <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem;">
                         <div>
-                            <span style="color: var(--text-dim);">${h.time}</span>
-                            <strong style="margin-left: 8px;">${h.symbol}</strong>
-                            <span style="color: var(--text-secondary); margin-left: 8px;">Entry: ${h.entryPrice} ➔ Exit: ${h.exitPrice}</span>
+                            <strong>${h.symbol}</strong> (${h.tier || 'TOKEN'}) • ${h.strategy}
+                            <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 2px;">${h.reason}</div>
                         </div>
-                        <div>
-                            <span style="font-weight: 800; color: ${h.result === 'WIN' ? '#34d399' : '#f43f5e'}; margin-right: 10px;">${h.pnlUSDT} (${h.pnlPct})</span>
-                            <span class="badge ${h.result === 'WIN' ? 'badge-green' : 'badge-yellow'}">${h.result}</span>
+                        <div style="text-align: right;">
+                            <strong style="color: ${h.result === 'WIN' ? '#34d399' : '#f43f5e'};">${h.pnlPct} (${h.pnlUSDT})</strong>
+                            <div style="font-size: 0.75rem; color: var(--text-dim);">${h.time}</div>
                         </div>
                     </div>
                 `).join('');
+            } else {
+                histBox.innerHTML = `<div style="text-align: center; color: var(--text-dim); padding: 20px;">No closed trades yet in ${currentTab.toUpperCase()} mode.</div>`;
             }
         }
-
-        // Manual Select & Trade Pair Function
-        async function tradePair(symbol) {
-            if (!confirm(`Are you sure you want to manually enter ${symbol}?`)) return;
-
-            try {
-                const res = await fetch('/api/trade-pair', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ symbol })
-                });
-                const data = await res.json();
-                alert(data.message);
-            } catch(e) {
-                alert("Trade entry error: " + e.message);
-            }
-        }
-
-        // Manual Trade Close Function
-        async function closePositionManual() {
-            const btn = document.getElementById('btnManualClose');
-            if (btn) {
-                btn.innerText = "⏳ Closing...";
-                btn.disabled = true;
-            }
-
-            try {
-                const res = await fetch('/api/close-position', { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    alert(`✅ Position Closed! Realized PnL: ${data.realizedPnlPct}%. Gains moved to vault.`);
-                } else {
-                    alert(data.message);
-                }
-            } catch(e) {
-                alert("Close error: " + e.message);
-            }
-        }
-
-        // Instant Profit Sweep Function
-        async function sweepProfit() {
-            const btn = document.getElementById('btnSweepProfit');
-            btn.innerText = "⏳ Sweeping...";
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/api/sweep-profit', { method: 'POST' });
-                const data = await res.json();
-                alert(data.message);
-            } catch(e) {
-                alert("Sweep error: " + e.message);
-            } finally {
-                btn.innerHTML = `<span>💰</span><span>SWEEP PROFIT TO WALLET</span>`;
-                btn.disabled = false;
-            }
-        }
-
-        setInterval(async () => {
-            if (ws.readyState !== 1) {
-                try {
-                    const r = await fetch('/api/state');
-                    const d = await r.json();
-                    render(d);
-                } catch(e) {}
-            }
-        }, 2000);
     </script>
 </body>
 </html>

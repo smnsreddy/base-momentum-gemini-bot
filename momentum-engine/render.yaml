@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: base-momentum-gemini-bot
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: BASE_RPC_URL
+        value: https://mainnet.base.org
+      - key: GEMINI_API_KEY
+        sync: false
